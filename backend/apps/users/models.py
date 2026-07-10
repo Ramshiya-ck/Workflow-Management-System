@@ -87,6 +87,18 @@ class CustomUser(AbstractUser):
         auto_now=True,
     )
 
+    failed_login_attempts = models.PositiveIntegerField(
+        default=0,
+        help_text="Count of consecutive failed login attempts.",
+    )
+
+    locked_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Timestamp until which the user account remains locked.",
+    )
+
     USERNAME_FIELD = "email"
 
     REQUIRED_FIELDS = []
