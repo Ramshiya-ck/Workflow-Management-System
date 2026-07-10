@@ -74,3 +74,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 "data": response_serializer.data,
             }
         )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        UserService.deactivate_user(admin_user=request.user, user_id=instance.pk)
+        return Response(
+            {"success": True, "message": "User deactivated successfully.", "data": None}
+        )
+

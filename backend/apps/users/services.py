@@ -68,7 +68,7 @@ class UserService:
         is_active=None,
         password=None,
     ):
-        user = User.objects.get(pk=user_id)
+        user = User.objects.select_for_update().get(pk=user_id)
         old_data = {
             "first_name": user.first_name,
             "last_name": user.last_name,
@@ -107,3 +107,22 @@ class UserService:
             )
 
         return user
+
+    @staticmethod
+    @transaction.atomic
+    def deactivate_user(admin_user, user_id):
+        """
+        Deactivates a user account (soft delete) instead of removing it physically from the database.
+        """
+        user = User.objects.select_for_update().get(pk=user_id)
+        if user.is_active:
+            user.is_active = False
+            user.save()
+            AuditService.log_activity(
+                user=admin_user,
+                action="UPDATE",
+                instance=user,
+                changes={"is_active": [True, False]},
+            )
+        return user
+
