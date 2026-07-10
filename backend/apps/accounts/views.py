@@ -1,17 +1,15 @@
 from rest_framework import status, views, permissions
 from rest_framework.response import Response
-from apps.users.serializers import CustomUserSerializer
 from .serializers import (
     LoginSerializer,
     GoogleLoginSerializer,
     ChangePasswordSerializer,
     ForgotPasswordSerializer,
+    VerifyOTPSerializer,
     ResetPasswordSerializer,
+    MeSerializer,
 )
 from .services import AuthService
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 
 class LoginView(views.APIView):
@@ -25,7 +23,6 @@ class LoginView(views.APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Retrieve client IP and user agent for audit logs
         ip_address = request.META.get("REMOTE_ADDR")
         user_agent = request.META.get("HTTP_USER_AGENT", "")
 
@@ -37,7 +34,7 @@ class LoginView(views.APIView):
         )
 
         tokens = AuthService.get_tokens_for_user(user)
-        user_serializer = CustomUserSerializer(user)
+        user_serializer = MeSerializer(user)
 
         return Response(
             {
@@ -69,7 +66,7 @@ class GoogleLoginView(views.APIView):
         )
 
         tokens = AuthService.get_tokens_for_user(user)
-        user_serializer = CustomUserSerializer(user)
+        user_serializer = MeSerializer(user)
 
         return Response(
             {
@@ -82,12 +79,28 @@ class GoogleLoginView(views.APIView):
 
 class LogoutView(views.APIView):
     """
-    Client-side JWT tokens are discarded. Backend logs activity.
+    Client-side JWT tokens are blacklisted and session is closed.
     """
 
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
-        # We can implement token blacklisting if needed, but simple successful response is sufficient
-        return Response({"success": True, "message": "Logged out successfully.", "data": None})
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed",
+                    "errors": {"refresh": ["This field is required."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        AuthService.logout_user(refresh_token)
+
+        return Response(
+            {"success": True, "message": "Logged out successfully.", "data": None}
+        )
 
 
 class MeView(views.APIView):
@@ -95,8 +108,10 @@ class MeView(views.APIView):
     Retrieves the currently authenticated user profile.
     """
 
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
-        serializer = CustomUserSerializer(request.user)
+        serializer = MeSerializer(request.user)
         return Response(
             {
                 "success": True,
@@ -111,30 +126,26 @@ class ChangePasswordView(views.APIView):
     Allows active users to change their own password.
     """
 
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = request.user
-        if not user.check_password(serializer.validated_data["old_password"]):
-            return Response(
-                {
-                    "success": False,
-                    "message": "Invalid credentials",
-                    "errors": {"old_password": ["Current password is incorrect."]},
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        AuthService.change_password(
+            user=request.user,
+            old_password=serializer.validated_data["old_password"],
+            new_password=serializer.validated_data["new_password"],
+        )
 
-        user.set_password(serializer.validated_data["new_password"])
-        user.save()
-
-        return Response({"success": True, "message": "Password changed successfully.", "data": None})
+        return Response(
+            {"success": True, "message": "Password changed successfully.", "data": None}
+        )
 
 
 class ForgotPasswordView(views.APIView):
     """
-    Enterprise forgotten password request. Generates standard success response.
+    Request password reset code via email.
     """
 
     permission_classes = [permissions.AllowAny]
@@ -143,17 +154,31 @@ class ForgotPasswordView(views.APIView):
         serializer = ForgotPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"].lower().strip()
-        user_exists = User.objects.filter(email=email).exists()
+        msg = AuthService.request_password_reset(
+            email=serializer.validated_data["email"]
+        )
 
-        # For enterprise security, return success even if user doesn't exist
-        # Simulation of sending a reset code (we can mock standard verification code '123456')
+        return Response({"success": True, "message": msg, "data": None})
+
+
+class VerifyOTPView(views.APIView):
+    """
+    Validate password reset verification code.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        AuthService.verify_otp(
+            email=serializer.validated_data["email"],
+            code=serializer.validated_data["code"],
+        )
+
         return Response(
-            {
-                "success": True,
-                "message": "If the email is registered, a password reset code has been sent.",
-                "data": {"code": "123456" if user_exists else None},  # Mock code returned for dev/testing ease
-            }
+            {"success": True, "message": "Code verified successfully.", "data": None}
         )
 
 
@@ -168,32 +193,12 @@ class ResetPasswordView(views.APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"].lower().strip()
-        code = serializer.validated_data["code"]
+        AuthService.reset_password_with_otp(
+            email=serializer.validated_data["email"],
+            code=serializer.validated_data["code"],
+            new_password=serializer.validated_data["new_password"],
+        )
 
-        if code != "123456":
-            return Response(
-                {
-                    "success": False,
-                    "message": "Invalid code",
-                    "errors": {"code": ["Invalid or expired reset code."]},
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            user = User.objects.get(email=email)
-            user.set_password(serializer.validated_data["new_password"])
-            user.save()
-            return Response(
-                {"success": True, "message": "Password reset successfully.", "data": None}
-            )
-        except User.DoesNotExist:
-            return Response(
-                {
-                    "success": False,
-                    "message": "User not found",
-                    "errors": {"email": ["User address not registered."]},
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        return Response(
+            {"success": True, "message": "Password reset successfully.", "data": None}
+        )
