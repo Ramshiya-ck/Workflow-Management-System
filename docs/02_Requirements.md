@@ -147,7 +147,57 @@ The bill progresses through the following sequential states:
     *   **Transitions:** Shifts assignment tracking to a new user without changing workflow status.
 
 ## 3. Auditing & Logging
-*   Every single transition must create a row in the `workflow_history` table.
 *   Comments/Remarks must be logged for every transition (especially mandatory for rejection actions).
+
+---
+
+# 02 Requirements - Dashboard Module
+
+This section details the requirements, metrics, and role-based data layouts for the **Dashboard** module.
+
+## 1. Requirement Analysis
+The Dashboard provides high-level key performance indicators (KPIs), metrics, and workflow workload status summaries to users based on their systemic role.
+
+### Dashboard Cards mapping:
+1.  **Super Admin:**
+    *   `Total Bills`: Total count of active invoices.
+    *   `Pending Bills`: Count of bills not in `ACCOUNTS_CLEARED` status.
+    *   `Cleared Bills`: Count of bills in `ACCOUNTS_CLEARED` status.
+    *   `Rejected Bills`: Count of bills possessing a non-null `rejection_reason`.
+    *   `Vendor Count`: Count of active vendors.
+    *   `Department Count`: Count of active departments.
+    *   `Workflow Summary`: Breakdown of count and total amount of bills per status.
+2.  **Receiving:**
+    *   `Pending Bills`: Count of bills in draft (`RECEIVING`) status.
+    *   `Bills Received Today`: Count of bills created today.
+    *   `Bills Returned`: Count of bills rejected back to receiving state.
+3.  **Data Entry:**
+    *   `Pending Entry`: Count of bills in `DATA_ENTRY` status.
+    *   `Completed Today`: Count of bills approved/submitted today by this user.
+    *   `Returned Bills`: Count of bills rejected back to data entry state.
+4.  **Department Supervisor:**
+    *   `Pending Approval`: Count of bills pending supervisor approval (`SUPERVISOR` status).
+    *   `Approved Today`: Count of bills approved today by the supervisor.
+    *   `Rejected Bills`: Count of bills rejected today by the supervisor.
+5.  **Department Manager:**
+    *   `Pending Approval`: Count of bills pending manager approval (`DEPARTMENT_MANAGER` status).
+    *   `Approved Today`: Count of bills approved today by the manager.
+    *   `Rejected Bills`: Count of bills rejected today by the manager.
+6.  **Accounts:**
+    *   `Pending Verification`: Count of bills pending accounts review (`ACCOUNTS` status).
+    *   `Cleared Bills`: Count of bills cleared today by the accounts user.
+    *   `Rejected Bills`: Count of bills rejected today by the accounts user.
+
+## 2. API Architecture & Pagination
+*   **API Endpoint:** `GET /api/v1/dashboard/`
+*   **Response Format:** Standard REST response layout, delivering role-specific card stats lists.
+*   **Pagination:** Read-only aggregate counts and lists of pending/recent items are returned. Detailed queue lists follow standard pagination rules (`StandardResultsSetPagination` matching 10 items per page).
+
+## 3. Query Optimization Strategy
+To achieve low latency and avoid N+1 query execution problems, database aggregation is structured as follows:
+*   **Aggregation & Annotation:** Use Django's `Count()` and `Sum()` aggregates to compute totals in a single database pass, avoiding looping over record queries.
+*   **Optimal Prefetching:** Relations (like `vendor` and `department` fields) must be retrieved using `select_related()` if detailed distributions are fetched.
+*   **No Database Writes:** The dashboard is purely read-only; no write operations, database tables, or migrations are allowed.
+
 
 
