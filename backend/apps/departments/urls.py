@@ -1,10 +1,14 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import DepartmentViewSet
-
-router = DefaultRouter()
-router.register(r"", DepartmentViewSet, basename="departments")
+from django.urls import path
+from .views import (
+    DepartmentListCreateView,
+    DepartmentDetailView,
+    DepartmentActivateView,
+    DepartmentDeactivateView,
+)
 
 urlpatterns = [
-    path("", include(router.urls)),
+    path("", DepartmentListCreateView.as_view(), name="department_list_create"),
+    path("<int:pk>/", DepartmentDetailView.as_view(), name="department_detail"),
+    path("<int:pk>/activate/", DepartmentActivateView.as_view(), name="department_activate"),
+    path("<int:pk>/deactivate/", DepartmentDeactivateView.as_view(), name="department_deactivate"),
 ]

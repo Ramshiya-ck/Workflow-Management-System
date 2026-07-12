@@ -41,3 +41,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=value.lower().strip()).exists():
             raise serializers.ValidationError("A user with this email address already exists.")
         return value.lower().strip()
+
+
+class UserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+        )
+        read_only_fields = fields
+

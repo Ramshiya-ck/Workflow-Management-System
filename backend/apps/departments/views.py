@@ -1,29 +1,61 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import status, views, permissions
 from rest_framework.response import Response
+from django.http import Http404
+
 from core.permissions.roles import IsSuperAdmin
-from .models import Department
-from .serializers import DepartmentSerializer
+from .serializers import DepartmentSerializer, DepartmentSummarySerializer
 from .services import DepartmentService
+from rest_framework.pagination import PageNumberPagination
 
 
-class DepartmentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing Departments.
-    Only Super Admins can write/delete; others can read.
-    """
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
-    queryset = Department.objects.all().order_by("name")
-    serializer_class = DepartmentSerializer
-    search_fields = ["name", "code"]
-    filterset_fields = ["is_active"]
 
+class DepartmentListCreateView(views.APIView):
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.request.method == "POST":
             return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    def get(self, request):
+        search = request.query_params.get("search")
+        ordering = request.query_params.get("ordering")
+
+        # Extract filters
+        filters = {}
+        is_active_param = request.query_params.get("is_active")
+        if is_active_param is not None:
+            # Only allow filtering by is_active if user is Super Admin
+            if request.user.is_superuser or request.user.role == "SUPER_ADMIN":
+                filters["is_active"] = is_active_param.lower() == "true"
+
+        queryset = DepartmentService.list_departments(
+            user=request.user, filters=filters, search=search, ordering=ordering
+        )
+
+        paginator = StandardResultsSetPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        serializer = DepartmentSummarySerializer(paginated_queryset, many=True)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Departments retrieved successfully.",
+                "data": {
+                    "count": paginator.page.paginator.count,
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": serializer.data,
+                },
+            }
+        )
+
+    def post(self, request):
+        serializer = DepartmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         department = DepartmentService.create_department(
@@ -33,32 +65,54 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             is_active=serializer.validated_data.get("is_active", True),
         )
 
-        response_serializer = self.get_serializer(department)
+        # Return lightweight department details (excluding ownership details)
+        data = {
+            "id": department.id,
+            "name": department.name,
+            "code": department.code,
+            "is_active": department.is_active,
+            "created_at": department.created_at,
+            "updated_at": department.updated_at,
+        }
+
         return Response(
             {
                 "success": True,
                 "message": "Department created successfully.",
-                "data": response_serializer.data,
+                "data": data,
             },
             status=status.HTTP_201_CREATED,
         )
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
 
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+class DepartmentDetailView(views.APIView):
+    def get_permissions(self):
+        if self.request.method in ["PATCH", "DELETE"]:
+            return [IsSuperAdmin()]
+        return [permissions.IsAuthenticated()]
 
-        department = DepartmentService.update_department(
-            user=request.user,
-            department_id=instance.pk,
-            name=serializer.validated_data.get("name"),
-            code=serializer.validated_data.get("code"),
-            is_active=serializer.validated_data.get("is_active"),
+    def get(self, request, pk):
+        department = DepartmentService.get_department(pk)
+        serializer = DepartmentSerializer(department)
+        return Response(
+            {
+                "success": True,
+                "message": "Department retrieved successfully.",
+                "data": serializer.data,
+            }
         )
 
-        response_serializer = self.get_serializer(department)
+    def patch(self, request, pk):
+        department = DepartmentService.get_department(pk)
+
+        serializer = DepartmentSerializer(department, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        updated_dept = DepartmentService.update_department(
+            user=request.user, department_id=pk, name=serializer.validated_data.get("name")
+        )
+
+        response_serializer = DepartmentSerializer(updated_dept)
         return Response(
             {
                 "success": True,
@@ -67,9 +121,34 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             }
         )
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        DepartmentService.delete_department(user=request.user, department_id=instance.pk)
+    def delete(self, request, pk):
+        DepartmentService.delete_department(user=request.user, department_id=pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DepartmentActivateView(views.APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        department = DepartmentService.activate_department(user=request.user, department_id=pk)
         return Response(
-            {"success": True, "message": "Department deleted successfully.", "data": None}
+            {
+                "success": True,
+                "message": "Department activated successfully.",
+                "data": {"id": department.id, "is_active": department.is_active},
+            }
+        )
+
+
+class DepartmentDeactivateView(views.APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        department = DepartmentService.deactivate_department(user=request.user, department_id=pk)
+        return Response(
+            {
+                "success": True,
+                "message": "Department deactivated successfully.",
+                "data": {"id": department.id, "is_active": department.is_active},
+            }
         )
