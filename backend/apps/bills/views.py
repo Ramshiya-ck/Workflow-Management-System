@@ -1,38 +1,61 @@
-from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
+from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter, OrderingFilter
-
-from apps.workflow.services import WorkflowService
-from apps.workflow.serializers import WorkflowHistorySerializer, WorkflowTransitionSerializer
-from .models import Bill
-from .serializers import BillSerializer, BillCreateSerializer
+from .serializers import BillSerializer
 from .services import BillService
-from core.choices import BillStatus, WorkflowAction
+from rest_framework.pagination import PageNumberPagination
 
 
-class BillViewSet(viewsets.ModelViewSet):
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class BillViewSet(viewsets.ViewSet):
     """
-    ViewSet for managing Bills and driving workflow transitions.
+    ViewSet for managing Bills (Data Entry phase).
+    Thin layer delegating all business logic to BillService.
     """
 
-    queryset = Bill.objects.all().order_by("-created_at")
-    serializer_class = BillSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ["current_status", "vendor", "department", "created_by", "assigned_to"]
-    search_fields = ["bill_number", "tracking_id", "vendor__name", "department__name"]
-    ordering_fields = ["created_at", "bill_date", "amount"]
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_class(self):
-        if self.action == "create":
-            return BillCreateSerializer
-        return BillSerializer
+    def list(self, request):
+        search = request.query_params.get("search")
+        ordering = request.query_params.get("ordering")
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        filters = {}
+        for param in ["vendor", "department", "current_status"]:
+            val = request.query_params.get(param)
+            if val is not None:
+                filters[param] = val
+
+        queryset = BillService.list_bills(
+            user=request.user, filters=filters, search=search, ordering=ordering
+        )
+
+        paginator = StandardResultsSetPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        serializer = BillSerializer(paginated_queryset, many=True)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Bills retrieved successfully.",
+                "data": {
+                    "count": paginator.page.paginator.count,
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": serializer.data,
+                },
+            }
+        )
+
+    def create(self, request):
+        serializer = BillSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         bill = BillService.create_bill(
@@ -41,7 +64,7 @@ class BillViewSet(viewsets.ModelViewSet):
             bill_date=serializer.validated_data["bill_date"],
             amount=serializer.validated_data["amount"],
             vendor=serializer.validated_data["vendor"],
-            department=serializer.validated_data["department"],
+            department=serializer.validated_data.get("department"),
         )
 
         response_serializer = BillSerializer(bill)
@@ -54,24 +77,26 @@ class BillViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
+    def retrieve(self, request, pk=None):
+        bill = BillService.get_bill(pk)
+        serializer = BillSerializer(bill)
+        return Response(
+            {
+                "success": True,
+                "message": "Bill retrieved successfully.",
+                "data": serializer.data,
+            }
+        )
 
-        # Validation: only RECEIVING status bills can be modified by their creator
-        if instance.current_status != BillStatus.RECEIVING and not request.user.is_superuser:
-            raise PermissionDenied("Only bills in RECEIVING state can be edited.")
+    def partial_update(self, request, pk=None):
+        bill_obj = BillService.get_bill(pk)
 
-        if instance.created_by != request.user and not request.user.is_superuser:
-            raise PermissionDenied("You can only edit bills created by yourself.")
-
-        # Re-use create serializer for validating input params
-        serializer = BillCreateSerializer(instance, data=request.data, partial=partial)
+        serializer = BillSerializer(bill_obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        bill = BillService.update_bill(
+        updated_bill = BillService.update_bill(
             user=request.user,
-            bill_id=instance.pk,
+            bill_id=pk,
             bill_number=serializer.validated_data.get("bill_number"),
             bill_date=serializer.validated_data.get("bill_date"),
             amount=serializer.validated_data.get("amount"),
@@ -79,7 +104,7 @@ class BillViewSet(viewsets.ModelViewSet):
             department=serializer.validated_data.get("department"),
         )
 
-        response_serializer = BillSerializer(bill)
+        response_serializer = BillSerializer(updated_bill)
         return Response(
             {
                 "success": True,
@@ -88,74 +113,21 @@ class BillViewSet(viewsets.ModelViewSet):
             }
         )
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
+    @action(detail=True, methods=["post"], url_path="assign-department")
+    def assign_department(self, request, pk=None):
+        department_id = request.data.get("department_id")
+        if not department_id:
+            raise ValidationError({"department_id": ["This field is required."]})
 
-        # Delete authorization: creator (if state is RECEIVING) or super admin
-        if not request.user.is_superuser:
-            if instance.current_status != BillStatus.RECEIVING:
-                raise PermissionDenied("Only draft bills in RECEIVING status can be deleted.")
-            if instance.created_by != request.user:
-                raise PermissionDenied("You can only delete bills created by yourself.")
-
-        BillService.soft_delete_bill(user=request.user, bill_id=instance.pk)
-        return Response({"success": True, "message": "Bill deleted successfully.", "data": None})
-
-    @action(detail=True, methods=["post"], url_path="transition")
-    def transition(self, request, pk=None):
-        """
-        Action endpoint to submit, approve, reject, or reassign a bill.
-        """
-        instance = self.get_object()
-        serializer = WorkflowTransitionSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        action = serializer.validated_data["action"]
-        comments = serializer.validated_data.get("comments", "")
-        target_user_id = serializer.validated_data.get("target_user_id")
-
-        bill = None
-        if action == WorkflowAction.SUBMIT:
-            bill = WorkflowService.submit_bill(user=request.user, bill_id=instance.pk, comments=comments)
-        elif action == WorkflowAction.APPROVE:
-            bill = WorkflowService.approve_bill(
-                user=request.user, bill_id=instance.pk, comments=comments
-            )
-        elif action == WorkflowAction.REJECT:
-            bill = WorkflowService.reject_bill(
-                user=request.user, bill_id=instance.pk, comments=comments
-            )
-        elif action == WorkflowAction.REASSIGN:
-            bill = WorkflowService.reassign_bill(
-                user=request.user,
-                bill_id=instance.pk,
-                target_user_id=target_user_id,
-                comments=comments,
-            )
-        else:
-            raise ValidationError(f"Action '{action}' is not supported.")
+        bill = BillService.assign_department(
+            user=request.user, bill_id=pk, department_id=department_id
+        )
 
         response_serializer = BillSerializer(bill)
         return Response(
             {
                 "success": True,
-                "message": f"Bill action {action} completed successfully.",
+                "message": "Department assigned successfully.",
                 "data": response_serializer.data,
-            }
-        )
-
-    @action(detail=True, methods=["get"], url_path="history")
-    def history(self, request, pk=None):
-        """
-        Retrieves the workflow history timeline for a specific bill.
-        """
-        instance = self.get_object()
-        history = instance.history.all().order_by("created_at")
-        serializer = WorkflowHistorySerializer(history, many=True)
-        return Response(
-            {
-                "success": True,
-                "message": "Workflow history retrieved successfully.",
-                "data": serializer.data,
             }
         )

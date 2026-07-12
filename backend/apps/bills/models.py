@@ -3,48 +3,48 @@ from django.conf import settings
 from core.choices import BillStatus
 
 
-class BillManager(models.Manager):
-    """
-    Manager to exclude soft-deleted bills by default
-    """
-
-    def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
-
-
 class Bill(models.Model):
     """
-    Enterprise Bill Model
+    Enterprise Bill Model representing invoices registered for tracking.
     """
 
     bill_number = models.CharField(
         max_length=50,
         db_index=True,
+        help_text="Invoice identifier (unique per vendor).",
     )
 
-    bill_date = models.DateField()
+    bill_date = models.DateField(
+        help_text="The date when the invoice was issued.",
+    )
 
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-    )
-
-    vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.PROTECT,
-        related_name="bills",
-    )
-
-    department = models.ForeignKey(
-        "departments.Department",
-        on_delete=models.PROTECT,
-        related_name="bills",
+        help_text="The total amount payable on the invoice.",
     )
 
     tracking_id = models.CharField(
         max_length=50,
         unique=True,
         db_index=True,
+        help_text="Auto-generated unique status tracking ID assigned by the Service Layer.",
+    )
+
+    vendor = models.ForeignKey(
+        "vendors.Vendor",
+        on_delete=models.PROTECT,
+        related_name="bills",
+        help_text="Associated vendor registering the invoice.",
+    )
+
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="bills",
+        help_text="Internal store department assigned to this bill (nullable initially).",
     )
 
     current_status = models.CharField(
@@ -52,51 +52,60 @@ class Bill(models.Model):
         choices=BillStatus.choices,
         default=BillStatus.RECEIVING,
         db_index=True,
+        help_text="Current workflow state of the bill.",
     )
 
+    rejection_reason = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Reason for bill rejection (reserved for workflow module).",
+    )
+
+    # Auditing / Ownership tracking
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="created_bills",
+        help_text="User who initially registered the bill.",
     )
 
-    assigned_to = models.ForeignKey(
+    updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="assigned_bills",
-    )
-
-    is_deleted = models.BooleanField(
-        default=False,
+        related_name="updated_bills",
+        help_text="User who last updated the bill details.",
     )
 
     created_at = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
+        help_text="Timestamp when the bill was registered.",
     )
 
     updated_at = models.DateTimeField(
         auto_now=True,
+        help_text="Timestamp when the bill was last modified.",
     )
-
-    # Active objects manager
-    objects = BillManager()
-    # All objects manager (including deleted)
-    all_objects = models.Manager()
 
     class Meta:
         db_table = "bills"
         ordering = ["-created_at"]
         verbose_name = "Bill"
         verbose_name_plural = "Bills"
-        # Unique Vendor + Bill Number validation constraint
-        unique_together = ("vendor", "bill_number")
-
-    def soft_delete(self):
-        self.is_deleted = True
-        self.save()
+        constraints = [
+            # Enforce positive invoice amount at database level
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0.00),
+                name="bill_amount_must_be_positive"
+            ),
+            # Enforce composite uniqueness of vendor + bill_number
+            models.UniqueConstraint(
+                fields=["vendor", "bill_number"],
+                name="unique_vendor_bill_number"
+            )
+        ]
 
     def __str__(self):
         return f"Bill {self.bill_number} - {self.vendor.name} ({self.current_status})"
