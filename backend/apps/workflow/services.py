@@ -1,24 +1,24 @@
 import logging
 from django.db import transaction
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.bills.models import Bill
 from apps.workflow.models import WorkflowHistory
 from apps.notifications.services import NotificationService
 from apps.audit.services import AuditService
-from core.choices import BillStatus, UserRole, WorkflowAction
+from core.choices import BillStatus, UserRole, WorkflowAction, WorkflowRejectReason
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class WorkflowService:
     """
-    State machine orchestrator for Bill transitions.
-    Defines allowed states, user role validations, and history logging.
+    Business service layer orchestrating the state machine workflow transitions for Bills.
     """
 
-    # Maps the current status to the user role allowed to act on it
+    # Role permission mappings for each workflow status stage
     STATUS_ROLE_MAP = {
         BillStatus.RECEIVING: UserRole.DATA_ENTRY,
         BillStatus.DATA_ENTRY: UserRole.DATA_ENTRY,
@@ -27,26 +27,27 @@ class WorkflowService:
         BillStatus.ACCOUNTS: UserRole.ACCOUNTS,
     }
 
-    # Standard linear approval chain
+    # Standard forward approval transition path
     APPROVAL_CHAIN = {
-        BillStatus.RECEIVING: BillStatus.SUPERVISOR,
+        BillStatus.RECEIVING: BillStatus.DATA_ENTRY,
         BillStatus.DATA_ENTRY: BillStatus.SUPERVISOR,
         BillStatus.SUPERVISOR: BillStatus.DEPARTMENT_MANAGER,
         BillStatus.DEPARTMENT_MANAGER: BillStatus.ACCOUNTS,
         BillStatus.ACCOUNTS: BillStatus.ACCOUNTS_CLEARED,
     }
 
-    # Rejection returns to previous step
+    # Reverse rejection transition path (must never skip levels)
     REJECTION_CHAIN = {
-        BillStatus.SUPERVISOR: BillStatus.DATA_ENTRY,
-        BillStatus.DEPARTMENT_MANAGER: BillStatus.SUPERVISOR,
         BillStatus.ACCOUNTS: BillStatus.DEPARTMENT_MANAGER,
+        BillStatus.DEPARTMENT_MANAGER: BillStatus.SUPERVISOR,
+        BillStatus.SUPERVISOR: BillStatus.DATA_ENTRY,
+        BillStatus.DATA_ENTRY: BillStatus.RECEIVING,
     }
 
     @staticmethod
     def validate_action_permission(user, bill):
         """
-        Validates if the user has the correct role to perform actions on the bill.
+        Validates that the user has authorization matching the bill's current stage.
         Super Admin bypasses all checks.
         """
         if user.is_superuser or user.role == UserRole.SUPER_ADMIN:
@@ -62,67 +63,17 @@ class WorkflowService:
 
     @staticmethod
     @transaction.atomic
-    def submit_bill(user, bill_id, comments=""):
-        """
-        Submits a newly created bill from RECEIVING to SUPERVISOR
-        """
-        bill = Bill.objects.select_for_update().get(pk=bill_id)
-
-        if bill.current_status != BillStatus.RECEIVING:
-            raise ValidationError(f"Only bills in RECEIVING status can be submitted.")
-
-        WorkflowService.validate_action_permission(user, bill)
-
-        from_status = bill.current_status
-        to_status = BillStatus.SUPERVISOR
-
-        bill.current_status = to_status
-        bill.assigned_to = None  # Clear assigned user so any supervisor can claim it
-        bill.save()
-
-        # Create history entry
-        history = WorkflowHistory.objects.create(
-            bill=bill,
-            from_status=from_status,
-            to_status=to_status,
-            action=WorkflowAction.SUBMIT,
-            performed_by=user,
-            comments=comments,
-        )
-
-        # Notify supervisors
-        from django.contrib.auth import get_user_model
-
-        User = get_user_model()
-        supervisors = User.objects.filter(role=UserRole.SUPERVISOR, is_active=True)
-        for supervisor in supervisors:
-            NotificationService.create_notification(
-                recipient=supervisor,
-                title="New Bill Submitted",
-                message=f"Bill {bill.bill_number} is pending approval.",
-                notification_type="APPROVAL_REQUIRED",
-                bill=bill,
-            )
-
-        AuditService.log_activity(
-            user=user,
-            action="UPDATE",
-            instance=bill,
-            changes={"current_status": [from_status, to_status]},
-        )
-
-        return bill
-
-    @staticmethod
-    @transaction.atomic
     def approve_bill(user, bill_id, comments=""):
         """
-        Approves a bill, moving it forward in the approval chain.
+        Transitions a bill forward along the approval workflow chain.
         """
-        bill = Bill.objects.select_for_update().get(pk=bill_id)
+        try:
+            bill = Bill.objects.select_for_update().get(pk=bill_id)
+        except Bill.DoesNotExist:
+            raise ValidationError({"bill_id": ["Bill not found."]})
 
-        if bill.current_status in [BillStatus.RECEIVING, BillStatus.ACCOUNTS_CLEARED]:
-            raise ValidationError(f"No approval action possible on status: {bill.current_status}.")
+        if bill.current_status == BillStatus.ACCOUNTS_CLEARED:
+            raise ValidationError({"status": ["This bill is already cleared."]})
 
         WorkflowService.validate_action_permission(user, bill)
 
@@ -130,12 +81,13 @@ class WorkflowService:
         to_status = WorkflowService.APPROVAL_CHAIN.get(from_status)
 
         if not to_status:
-            raise ValidationError(f"No next approval state defined for: {from_status}.")
+            raise ValidationError({"status": [f"No next approval status defined from {from_status}."]})
 
         bill.current_status = to_status
-        bill.assigned_to = None  # Clear assignment so anyone with the next role can claim
-        bill.save()
+        bill.updated_by = user
+        bill.save(update_fields=["current_status", "updated_by", "updated_at"])
 
+        # Record workflow timeline history
         WorkflowHistory.objects.create(
             bill=bill,
             from_status=from_status,
@@ -145,32 +97,7 @@ class WorkflowService:
             comments=comments,
         )
 
-        # Notify next role groups
-        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
-        if next_role:
-            from django.contrib.auth import get_user_model
-
-            User = get_user_model()
-            next_users = User.objects.filter(role=next_role, is_active=True)
-            for next_user in next_users:
-                NotificationService.create_notification(
-                    recipient=next_user,
-                    title="Bill Approval Required",
-                    message=f"Bill {bill.bill_number} has been approved to your stage.",
-                    notification_type="APPROVAL_REQUIRED",
-                    bill=bill,
-                )
-        else:
-            # Reached final status ACCOUNTS_CLEARED
-            # Notify creator
-            NotificationService.create_notification(
-                recipient=bill.created_by,
-                title="Bill Cleared",
-                message=f"Your bill {bill.bill_number} has been fully cleared.",
-                notification_type="CLEARED",
-                bill=bill,
-            )
-
+        # Log system audit log
         AuditService.log_activity(
             user=user,
             action="UPDATE",
@@ -178,22 +105,44 @@ class WorkflowService:
             changes={"current_status": [from_status, to_status]},
         )
 
+        # Dispatch notifications
+        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
+        if next_role:
+            next_users = User.objects.filter(role=next_role, is_active=True)
+            for next_user in next_users:
+                NotificationService.create_notification(
+                    recipient=next_user,
+                    title="Bill Approval Required",
+                    message=f"Bill {bill.bill_number} requires review and approval.",
+                    notification_type="APPROVAL_REQUIRED",
+                    bill=bill,
+                )
+        else:
+            # Reached Accounts Cleared
+            NotificationService.create_notification(
+                recipient=bill.created_by,
+                title="Bill Cleared",
+                message=f"Your registered bill {bill.bill_number} has been cleared.",
+                notification_type="CLEARED",
+                bill=bill,
+            )
+
         return bill
 
     @staticmethod
     @transaction.atomic
-    def reject_bill(user, bill_id, comments):
+    def reject_bill(user, bill_id, reason_code, reason_note="", comments=""):
         """
-        Rejects a bill, sending it back to the previous stage.
-        Rejection comments are mandatory.
+        Transitions a bill backward to the previous stage in the workflow.
+        Rejection must follow the reverse reject flow level-by-level without skipping.
         """
-        if not comments or not comments.strip():
-            raise ValidationError({"comments": ["Comments are required when rejecting a bill."]})
-
-        bill = Bill.objects.select_for_update().get(pk=bill_id)
+        try:
+            bill = Bill.objects.select_for_update().get(pk=bill_id)
+        except Bill.DoesNotExist:
+            raise ValidationError({"bill_id": ["Bill not found."]})
 
         if bill.current_status in [BillStatus.RECEIVING, BillStatus.ACCOUNTS_CLEARED]:
-            raise ValidationError(f"No rejection action possible on status: {bill.current_status}.")
+            raise ValidationError({"status": [f"Rejection not possible from status: {bill.current_status}."]})
 
         WorkflowService.validate_action_permission(user, bill)
 
@@ -201,12 +150,19 @@ class WorkflowService:
         to_status = WorkflowService.REJECTION_CHAIN.get(from_status)
 
         if not to_status:
-            raise ValidationError(f"No rejection state defined for: {from_status}.")
+            raise ValidationError({"status": [f"No reverse reject status defined from {from_status}."]})
+
+        # Reject comments/note are required (either code or custom notes)
+        rejection_reason = reason_note if reason_code == WorkflowRejectReason.OTHER else reason_code
+        if not rejection_reason or not rejection_reason.strip():
+            raise ValidationError({"reason_code": ["A reject reason details string is required."]})
 
         bill.current_status = to_status
-        bill.assigned_to = None
-        bill.save()
+        bill.rejection_reason = rejection_reason.strip()
+        bill.updated_by = user
+        bill.save(update_fields=["current_status", "rejection_reason", "updated_by", "updated_at"])
 
+        # Record workflow timeline history
         WorkflowHistory.objects.create(
             bill=bill,
             from_status=from_status,
@@ -214,95 +170,66 @@ class WorkflowService:
             action=WorkflowAction.REJECT,
             performed_by=user,
             comments=comments,
+            reason_code=reason_code,
+            reason_note=reason_note,
         )
 
-        # Notify creator or data entry roles
-        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
-        if next_role:
-            from django.contrib.auth import get_user_model
-
-            User = get_user_model()
-            next_users = User.objects.filter(role=next_role, is_active=True)
-            for next_user in next_users:
-                NotificationService.create_notification(
-                    recipient=next_user,
-                    title="Bill Rejected",
-                    message=f"Bill {bill.bill_number} has been rejected back to your stage. Reason: {comments}",
-                    notification_type="REJECTED",
-                    bill=bill,
-                )
-
-        AuditService.log_activity(
-            user=user,
-            action="UPDATE",
-            instance=bill,
-            changes={"current_status": [from_status, to_status]},
-        )
-
-        return bill
-
-    @staticmethod
-    @transaction.atomic
-    def reassign_bill(user, bill_id, target_user_id, comments=""):
-        """
-        Reassigns the bill to another active user.
-        The target user must have the appropriate role matching the bill's current stage.
-        """
-        bill = Bill.objects.select_for_update().get(pk=bill_id)
-
-        if bill.current_status == BillStatus.ACCOUNTS_CLEARED:
-            raise ValidationError("Cannot reassign cleared bills.")
-
-        WorkflowService.validate_action_permission(user, bill)
-
-        from django.contrib.auth import get_user_model
-
-        User = get_user_model()
-        target_user = User.objects.get(pk=target_user_id)
-
-        if not target_user.is_active:
-            raise ValidationError({"target_user": ["Target user is inactive."]})
-
-        required_role = WorkflowService.STATUS_ROLE_MAP.get(bill.current_status)
-        if target_user.role != required_role and not target_user.is_superuser:
-            raise ValidationError(
-                {
-                    "target_user": [
-                        f"Target user role ({target_user.role}) does not match the required stage role ({required_role})."
-                    ]
-                }
-            )
-
-        old_assignee = bill.assigned_to
-        bill.assigned_to = target_user
-        bill.save()
-
-        WorkflowHistory.objects.create(
-            bill=bill,
-            from_status=bill.current_status,
-            to_status=bill.current_status,
-            action=WorkflowAction.REASSIGN,
-            performed_by=user,
-            assigned_to=target_user,
-            comments=comments or f"Reassigned from {old_assignee} to {target_user}",
-        )
-
-        # Notify the reassigned user
-        NotificationService.create_notification(
-            recipient=target_user,
-            title="Bill Reassigned to You",
-            message=f"Bill {bill.bill_number} has been assigned to you for review.",
-            notification_type="REASSIGNED",
-            bill=bill,
-        )
-
+        # Log system audit log
         AuditService.log_activity(
             user=user,
             action="UPDATE",
             instance=bill,
             changes={
-                "assigned_to_id": [old_assignee.pk if old_assignee else None, target_user.pk]
+                "current_status": [from_status, to_status],
+                "rejection_reason": [None, bill.rejection_reason],
             },
         )
 
+        # Notify users in the rejected stage
+        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
+        if next_role:
+            next_users = User.objects.filter(role=next_role, is_active=True)
+            for next_user in next_users:
+                NotificationService.create_notification(
+                    recipient=next_user,
+                    title="Bill Rejected",
+                    message=f"Bill {bill.bill_number} has been rejected back to your stage. Reason: {rejection_reason}",
+                    notification_type="REJECTED",
+                    bill=bill,
+                )
+
         return bill
+
+    @staticmethod
+    def get_history(bill_id):
+        """
+        Retrieves workflow timeline history records for a bill.
+        """
+        return (
+            WorkflowHistory.objects.filter(bill_id=bill_id)
+            .select_related("performed_by", "assigned_to")
+            .order_by("created_at")
+        )
+
+    @staticmethod
+    def list_pending(user):
+        """
+        Queries all bills optimized with select_related that are currently pending user actions.
+        """
+        base_queryset = Bill.objects.select_related(
+            "vendor", "department", "created_by", "updated_by"
+        )
+
+        if user.is_superuser or user.role == UserRole.SUPER_ADMIN:
+            return base_queryset.exclude(current_status=BillStatus.ACCOUNTS_CLEARED)
+
+        if user.role == UserRole.DATA_ENTRY:
+            return base_queryset.filter(current_status__in=[BillStatus.RECEIVING, BillStatus.DATA_ENTRY])
+        elif user.role == UserRole.SUPERVISOR:
+            return base_queryset.filter(current_status=BillStatus.SUPERVISOR)
+        elif user.role == UserRole.DEPARTMENT_MANAGER:
+            return base_queryset.filter(current_status=BillStatus.DEPARTMENT_MANAGER)
+        elif user.role == UserRole.ACCOUNTS:
+            return base_queryset.filter(current_status=BillStatus.ACCOUNTS)
+
+        return base_queryset.none()

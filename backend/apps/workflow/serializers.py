@@ -1,12 +1,16 @@
 from rest_framework import serializers
-from apps.users.serializers import CustomUserSerializer
+from apps.users.serializers import UserSummarySerializer
 from .models import WorkflowHistory
-from core.choices import WorkflowAction
+from core.choices import WorkflowRejectReason
 
 
 class WorkflowHistorySerializer(serializers.ModelSerializer):
-    performed_by = CustomUserSerializer(read_only=True)
-    assigned_to = CustomUserSerializer(read_only=True)
+    """
+    Serializer to represent the step history of a Bill in a workflow.
+    """
+
+    performed_by = UserSummarySerializer(read_only=True)
+    assigned_to = UserSummarySerializer(read_only=True)
 
     class Meta:
         model = WorkflowHistory
@@ -18,33 +22,49 @@ class WorkflowHistorySerializer(serializers.ModelSerializer):
             "performed_by",
             "assigned_to",
             "comments",
+            "reason_code",
+            "reason_note",
             "created_at",
         )
+        read_only_fields = fields
 
 
-class WorkflowTransitionSerializer(serializers.Serializer):
-    action = serializers.ChoiceField(choices=WorkflowAction.choices)
-    target_user_id = serializers.IntegerField(required=False, allow_null=True)
-    comments = serializers.CharField(required=False, allow_blank=True)
+class WorkflowApproveSerializer(serializers.Serializer):
+    """
+    Validates payload to approve a bill.
+    """
+
+    comments = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional remarks for approval.",
+    )
+
+
+class WorkflowRejectSerializer(serializers.Serializer):
+    """
+    Validates payload to reject a bill.
+    """
+
+    reason_code = serializers.ChoiceField(
+        choices=WorkflowRejectReason.choices,
+        help_text="Predefined rejection reason code.",
+    )
+    reason_note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Detailed note. Required if reason code is 'Other'.",
+    )
 
     def validate(self, attrs):
-        action = attrs.get("action")
-        comments = attrs.get("comments", "").strip()
-        target_user_id = attrs.get("target_user_id")
+        reason_code = attrs.get("reason_code")
+        reason_note = attrs.get("reason_note", "").strip()
 
-        if action in [WorkflowAction.REJECT] and not comments:
+        if reason_code == WorkflowRejectReason.OTHER and not reason_note:
             raise serializers.ValidationError(
-                {"comments": ["Comments are required when rejecting a bill."]}
+                {"reason_note": ["Custom reason notes are required when 'Other' is selected."]}
             )
-
-        if action == WorkflowAction.REASSIGN:
-            if not target_user_id:
-                raise serializers.ValidationError(
-                    {"target_user_id": ["Target user is required for reassignment."]}
-                )
-            if not comments:
-                raise serializers.ValidationError(
-                    {"comments": ["Comments/reasons are required for reassignment."]}
-                )
 
         return attrs

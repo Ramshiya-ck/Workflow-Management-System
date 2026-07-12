@@ -147,3 +147,57 @@ class Bill(models.Model):
         ]
 ```
 
+---
+
+# 04 Database Design - Workflow Module
+
+This section details the relational structure and indexing optimizations for the `workflow_history` table.
+
+## 1. Relational Database Schema
+
+### Table: `workflow_history`
+
+The `workflow_history` table tracks each step and approval action of bills through the system workflows.
+
+| Column Name | DB Data Type | Constraints / Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `BIGINT` | Primary Key, Auto Increment | Unique internal identifier. |
+| `bill_id` | `BIGINT` | `NOT NULL`, Foreign Key `ON DELETE PROTECT` | The associated bill record. |
+| `from_status` | `VARCHAR(30)` | `NULL` | The previous status of the bill. |
+| `to_status` | `VARCHAR(30)` | `NOT NULL`, Indexed | The target status of the bill. |
+| `action` | `VARCHAR(20)` | `NOT NULL`, Indexed | The action taken in this step. |
+| `performed_by_id` | `BIGINT` | `NOT NULL`, Foreign Key `ON DELETE PROTECT` | User who performed the action. |
+| `assigned_to_id` | `BIGINT` | `NULL`, Foreign Key `ON DELETE SET_NULL` | User assigned for next actions (if applicable). |
+| `comments` | `TEXT` | `NULL` | Remarks/reasons for the action. |
+| `created_at` | `TIMESTAMP WITH TZ` | `NOT NULL`, Auto-generated, Indexed | Timestamp when the action was logged. |
+
+### Database-Level Constraints & Optimizations
+*   **Indexing on Search Columns:** Built-in indexes on `to_status` and `action` to accelerate statistics gathering and workflow reports queries.
+*   **Timestamp Indexing:** Indexing on `created_at` to optimize ordering by history sequence when rendering the audit timelines.
+*   **Audit Safety (ON DELETE PROTECT):** Since workflow history is an immutable audit trail, deletion of associated bills is blocked if they have any workflow history (`ON DELETE PROTECT`). Similarly, the relationship to users is protected (`ON DELETE PROTECT`) to prevent orphaned trail logs.
+
+---
+
+## 2. Django Model Mapping
+
+The mapping in Django is handled in `apps.workflow.models.WorkflowHistory` as follows:
+
+```python
+class WorkflowHistory(models.Model):
+    bill = models.ForeignKey("bills.Bill", on_delete=models.PROTECT, related_name="history")
+    from_status = models.CharField(max_length=30, choices=BillStatus.choices, blank=True, null=True)
+    to_status = models.CharField(max_length=30, choices=BillStatus.choices, db_index=True)
+    action = models.CharField(max_length=20, choices=WorkflowAction.choices, db_index=True)
+    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="workflow_actions_performed")
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="workflow_reassignments")
+    comments = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "workflow_history"
+        ordering = ["created_at"]
+        verbose_name = "Workflow History"
+        verbose_name_plural = "Workflow Histories"
+```
+
+

@@ -23,3 +23,11 @@ class WorkflowAction(models.TextChoices):
     APPROVE = "APPROVE", "Approve"
     REJECT = "REJECT", "Reject"
     REASSIGN = "REASSIGN", "Reassign"
+
+
+class WorkflowRejectReason(models.TextChoices):
+    CREDIT_NOTE_PENDING = "Credit Note Pending", "Credit Note Pending"
+    PRICE_DIFFERENCE = "Price Difference", "Price Difference"
+    DISCOUNT_PENDING = "Discount Pending", "Discount Pending"
+    OTHER = "Other", "Other"
+
