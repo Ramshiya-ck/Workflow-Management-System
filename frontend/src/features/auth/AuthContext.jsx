@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import apiClient from "../api/client";
+import apiClient from "@/services/apiClient";
 
 const AuthContext = createContext(null);
 
@@ -50,26 +50,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = async (googleToken) => {
-    setLoading(true);
-    try {
-      const response = await apiClient.post("/auth/google/", { token: googleToken });
-      if (response.data?.success) {
-        const { tokens, user: userData } = response.data.data;
-        localStorage.setItem("access_token", tokens.access);
-        localStorage.setItem("refresh_token", tokens.refresh);
-        setUser(userData);
-        return { success: true };
-      }
-      return { success: false, message: "Google Authentication failed" };
-    } catch (error) {
-      const message = error.response?.data?.message || "Google Authentication failed";
-      return { success: false, message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const logout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
@@ -88,7 +68,6 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
-        loginWithGoogle,
         logout,
         hasRole,
         refreshProfile: fetchProfile,
@@ -99,4 +78,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};

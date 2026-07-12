@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -40,7 +40,7 @@ apiClient.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          const res = await axios.post(`${API_URL}/auth/token/refresh/`, {
+          const res = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
             refresh: refreshToken,
           });
 
@@ -57,12 +57,16 @@ apiClient.interceptors.response.use(
         }
       } else {
         localStorage.clear();
-        // Avoid redirecting if we are already on login page
         if (!window.location.pathname.includes("/login")) {
           window.location.href = "/login";
         }
       }
     }
+
+    // Global Error Handler
+    const errorMessage = error.response?.data?.message || "An unexpected error occurred.";
+    console.error("Global API Error:", errorMessage);
+
     return Promise.reject(error);
   }
 );

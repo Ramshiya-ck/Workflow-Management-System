@@ -1,100 +1,85 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import DashboardLayout from "./layouts/DashboardLayout";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider, useAuth } from "@/features/auth/AuthContext";
 
-// Pages
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Bills from "./pages/Bills";
-import BillDetail from "./pages/BillDetail";
-import Departments from "./pages/Departments";
-import Vendors from "./pages/Vendors";
-import Reports from "./pages/Reports";
-import Users from "./pages/Users";
-import AuditLogs from "./pages/AuditLogs";
+// Routes protection
+import PublicRoute from "@/routes/PublicRoute";
+import ProtectedRoute from "@/routes/ProtectedRoute";
 
-// Route protection for specific Roles
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading, hasRole } = useAuth();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+const LoginPlaceholder = () => {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow p-6 text-center">
+        <h1 className="text-2xl font-bold text-slate-850 mb-2">Workflow Management System</h1>
+        <p className="text-slate-600 mb-4">Please log in to continue</p>
+        <div className="text-sm text-slate-400 border-t pt-4">
+          Auth UI is disabled during frontend foundation configuration
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+};
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (allowedRoles && !hasRole(allowedRoles)) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
+const DashboardPlaceholder = () => {
+  const { user, logout } = useAuth();
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow p-6 text-center">
+        <h1 className="text-2xl font-bold text-slate-850 mb-2">Welcome to AAK Hypermarket WMS</h1>
+        <p className="text-slate-600 mb-4">Logged in as: {user?.email}</p>
+        <button
+          onClick={logout}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition cursor-pointer"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  );
 };
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          {/* Public Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <AuthProvider>
+          <Routes>
+            {/* Public Auth Routes */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <LoginPlaceholder />
+                </PublicRoute>
+              }
+            />
 
-          {/* Protected Dashboard/App Routes */}
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="bills" element={<Bills />} />
-            <Route path="bills/:id" element={<BillDetail />} />
-            
+            {/* Protected Dashboard/App Routes */}
             <Route
-              path="departments"
+              path="/"
               element={
-                <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
-                  <Departments />
+                <ProtectedRoute>
+                  <DashboardPlaceholder />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="vendors"
-              element={
-                <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
-                  <Vendors />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="reports" element={<Reports />} />
-            <Route
-              path="users"
-              element={
-                <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="audit-logs"
-              element={
-                <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
-                  <AuditLogs />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
 
-          {/* Catch All Redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+            {/* Catch All Redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
