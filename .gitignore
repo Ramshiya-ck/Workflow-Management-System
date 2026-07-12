@@ -178,3 +178,6 @@ coverage/
 
 # Mac
 .DS_Store
+
+# Frontend build
+dist
