@@ -1,5 +1,4 @@
-import apiClient from "./apiClient";
-
-export const getDashboardStats = async (view) => {
-  // TODO: implement
+// Placeholder for dashboard metrics endpoint
+export const getDashboardStats = async (_view) => {
+  // TODO: implement with apiClient
 };

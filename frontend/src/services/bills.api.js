@@ -1,5 +1,9 @@
 import apiClient from "./apiClient";
 
-export const getBills = async () => {
-  // TODO: implement
+/**
+ * Retrieves lists of invoices and workflow stages.
+ */
+export const getBills = async (params = {}) => {
+  const response = await apiClient.get("/bills/", { params });
+  return response.data;
 };

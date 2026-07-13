@@ -1,5 +1,4 @@
-import apiClient from "./apiClient";
-
+// Placeholder for departments endpoints
 export const getDepartments = async () => {
-  // TODO: implement
+  // TODO: implement with apiClient
 };

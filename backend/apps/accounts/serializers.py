@@ -60,5 +60,6 @@ class MeSerializer(serializers.ModelSerializer):
             "phone_number",
             "role",
             "is_active",
+            "is_superuser",
         )
         read_only_fields = fields

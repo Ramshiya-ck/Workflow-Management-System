@@ -1,5 +1,4 @@
-import apiClient from "./apiClient";
-
-export const approveBill = async (billId, payload) => {
-  // TODO: implement
+// Placeholder for workflow endpoints
+export const approveBill = async (_billId, _payload) => {
+  // TODO: implement with apiClient
 };

@@ -1,5 +1,4 @@
-import apiClient from "./apiClient";
-
-export const login = async (credentials) => {
-  // TODO: implement
+// Placeholder for auth endpoints
+export const login = async (_credentials) => {
+  // TODO: implement with apiClient
 };
