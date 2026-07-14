@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.bills.serializers import BillSerializer
-from .serializers import WorkflowHistorySerializer, WorkflowApproveSerializer, WorkflowRejectSerializer
+from .serializers import WorkflowHistorySerializer, WorkflowApproveSerializer, WorkflowRejectSerializer, WorkflowHoldSerializer, WorkflowResumeSerializer
 from .services import WorkflowService
 from rest_framework.pagination import PageNumberPagination
 
@@ -94,6 +94,48 @@ class WorkflowViewSet(viewsets.ViewSet):
             {
                 "success": True,
                 "message": "Bill rejected successfully.",
+                "data": response_serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="hold")
+    def hold(self, request, pk=None):
+        serializer = WorkflowHoldSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        bill = WorkflowService.hold_bill(
+            user=request.user,
+            bill_id=pk,
+            reason_code=serializer.validated_data["reason_code"],
+            reason_note=serializer.validated_data.get("reason_note", ""),
+            comments=serializer.validated_data.get("comments", ""),
+        )
+
+        response_serializer = BillSerializer(bill)
+        return Response(
+            {
+                "success": True,
+                "message": "Bill placed on hold successfully.",
+                "data": response_serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="resume")
+    def resume(self, request, pk=None):
+        serializer = WorkflowResumeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        bill = WorkflowService.resume_bill(
+            user=request.user,
+            bill_id=pk,
+            comments=serializer.validated_data.get("comments", ""),
+        )
+
+        response_serializer = BillSerializer(bill)
+        return Response(
+            {
+                "success": True,
+                "message": "Bill workflow resumed successfully.",
                 "data": response_serializer.data,
             }
         )

@@ -16,6 +16,14 @@ const SettingsPage = lazy(() => import("@/features/dashboard/pages/SettingsPage"
 const DepartmentsPage = lazy(() => import("@/features/departments/pages/DepartmentsPage"));
 const VendorsPage = lazy(() => import("@/features/vendors/pages/VendorsPage"));
 const VendorDetailsPage = lazy(() => import("@/features/vendors/pages/VendorDetailsPage"));
+const BillsPage = lazy(() => import("@/features/bills/pages/BillsPage"));
+const BillDetailsPage = lazy(() => import("@/features/bills/pages/BillDetailsPage"));
+const CreateBillPage = lazy(() => import("@/features/bills/pages/CreateBillPage"));
+const EditBillPage = lazy(() => import("@/features/bills/pages/EditBillPage"));
+
+// Lazy loaded Workflow Pages
+const WorkflowQueuePage = lazy(() => import("@/features/workflow/pages/WorkflowQueuePage"));
+const WorkflowDetailsPage = lazy(() => import("@/features/workflow/pages/WorkflowDetailsPage"));
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -77,21 +85,27 @@ export const AppRoutes = () => {
           />
           <Route
             path="bills"
-            element={
-              <div className="p-6 bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-                <h2 className="text-lg font-bold text-zinc-900 font-sans">Bills Registry</h2>
-                <p className="text-xs text-zinc-500 font-sans mt-1">Invoice collections and approval state registries.</p>
-              </div>
-            }
+            element={<BillsPage />}
+          />
+          <Route
+            path="bills/:id"
+            element={<BillDetailsPage />}
+          />
+          <Route
+            path="bills/create"
+            element={<CreateBillPage />}
+          />
+          <Route
+            path="bills/:id/edit"
+            element={<EditBillPage />}
           />
           <Route
             path="workflow"
-            element={
-              <div className="p-6 bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-                <h2 className="text-lg font-bold text-zinc-900 font-sans">Workflow Approval Board</h2>
-                <p className="text-xs text-zinc-500 font-sans mt-1">Board displaying transitions across levels.</p>
-              </div>
-            }
+            element={<WorkflowQueuePage />}
+          />
+          <Route
+            path="workflow/:id"
+            element={<WorkflowDetailsPage />}
           />
           <Route
             path="reports"

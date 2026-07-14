@@ -8,6 +8,7 @@ from apps.vendors.models import Vendor
 from apps.departments.models import Department
 from apps.workflow.models import WorkflowHistory
 from core.choices import BillStatus, UserRole, WorkflowAction
+from apps.workflow.services import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,15 @@ class DashboardService:
         """
         today = timezone.localdate()
 
-        pending = Bill.objects.filter(current_status=BillStatus.RECEIVING).count()
+        from django.db.models import Q
+        pending = (
+            WorkflowService.annotate_held_status(Bill.objects.all())
+            .filter(
+                Q(current_status=BillStatus.RECEIVING)
+                | Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.RECEIVING)
+            )
+            .count()
+        )
         received_today = Bill.objects.filter(created_at__date=today).count()
         returned = (
             Bill.objects.filter(current_status=BillStatus.RECEIVING)
@@ -130,7 +139,15 @@ class DashboardService:
         """
         today = timezone.localdate()
 
-        pending = Bill.objects.filter(current_status=BillStatus.DATA_ENTRY).count()
+        from django.db.models import Q
+        pending = (
+            WorkflowService.annotate_held_status(Bill.objects.all())
+            .filter(
+                Q(current_status=BillStatus.DATA_ENTRY)
+                | Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.DATA_ENTRY)
+            )
+            .count()
+        )
         completed_today = WorkflowHistory.objects.filter(
             performed_by=user,
             action__in=[WorkflowAction.SUBMIT, WorkflowAction.APPROVE],
@@ -161,7 +178,7 @@ class DashboardService:
         """
         today = timezone.localdate()
 
-        pending = Bill.objects.filter(current_status=BillStatus.SUPERVISOR).count()
+        pending = WorkflowService.list_pending(user).count()
         approved_today = WorkflowHistory.objects.filter(
             performed_by=user, action=WorkflowAction.APPROVE, created_at__date=today
         ).count()
@@ -187,7 +204,7 @@ class DashboardService:
         """
         today = timezone.localdate()
 
-        pending = Bill.objects.filter(current_status=BillStatus.DEPARTMENT_MANAGER).count()
+        pending = WorkflowService.list_pending(user).count()
         approved_today = WorkflowHistory.objects.filter(
             performed_by=user, action=WorkflowAction.APPROVE, created_at__date=today
         ).count()
@@ -213,7 +230,7 @@ class DashboardService:
         """
         today = timezone.localdate()
 
-        pending = Bill.objects.filter(current_status=BillStatus.ACCOUNTS).count()
+        pending = WorkflowService.list_pending(user).count()
         cleared_today = WorkflowHistory.objects.filter(
             performed_by=user,
             action=WorkflowAction.APPROVE,

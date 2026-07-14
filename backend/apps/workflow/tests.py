@@ -10,7 +10,7 @@ from apps.vendors.models import Vendor
 from apps.bills.models import Bill
 from apps.workflow.models import WorkflowHistory
 from apps.audit.models import ActivityLog
-from core.choices import UserRole, BillStatus, WorkflowRejectReason
+from core.choices import UserRole, BillStatus, WorkflowRejectReason, WorkflowHoldReason
 
 User = get_user_model()
 
@@ -294,3 +294,73 @@ class WorkflowSystemTests(APITestCase):
             # Thread 2 should block trying to acquire lock or fail if timeout occurs
             # We assert that Thread 1 remains intact.
             self.assertEqual(bill_locked.current_status, BillStatus.SUPERVISOR)
+
+    def test_hold_bill_success(self):
+        self.set_auth_credentials(self.entry_token)
+        hold_url = reverse("workflow-hold", args=[self.bill.id])
+        payload = {
+            "reason_code": WorkflowHoldReason.PRICE_DISCREPANCY,
+            "comments": "Holding for price validation",
+        }
+        response = self.client.post(hold_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.bill.refresh_from_db()
+        self.assertEqual(self.bill.current_status, BillStatus.HOLDING)
+
+        # Verify history trace
+        history = WorkflowHistory.objects.filter(bill=self.bill).order_by("-created_at")
+        self.assertEqual(history[0].action, "HOLD")
+        self.assertEqual(history[0].reason_code, WorkflowHoldReason.PRICE_DISCREPANCY)
+        self.assertEqual(history[0].comments, "Holding for price validation")
+
+    def test_hold_bill_validation_error(self):
+        self.set_auth_credentials(self.entry_token)
+        hold_url = reverse("workflow-hold", args=[self.bill.id])
+        # Missing reason_code
+        response = self.client.post(hold_url, {"comments": "Hold"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_resume_bill_success(self):
+        # Setup: Put bill on hold from RECEIVING
+        self.set_auth_credentials(self.entry_token)
+        hold_url = reverse("workflow-hold", args=[self.bill.id])
+        self.client.post(hold_url, {
+            "reason_code": WorkflowHoldReason.TAX_DISCREPANCY,
+            "comments": "Holding",
+        })
+
+        resume_url = reverse("workflow-resume", args=[self.bill.id])
+        response = self.client.post(resume_url, {"comments": "Resuming after tax correction"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.bill.refresh_from_db()
+        self.assertEqual(self.bill.current_status, BillStatus.RECEIVING)
+
+        # Verify history trace
+        history = WorkflowHistory.objects.filter(bill=self.bill).order_by("-created_at")
+        self.assertEqual(history[0].action, "RESUME")
+        self.assertEqual(history[0].comments, "Resuming after tax correction")
+        self.assertEqual(history[0].from_status, BillStatus.HOLDING)
+        self.assertEqual(history[0].to_status, BillStatus.RECEIVING)
+
+    def test_resume_bill_permission_denied(self):
+        # Setup: transition to SUPERVISOR status
+        self.set_auth_credentials(self.entry_token)
+        approve_url = reverse("workflow-approve", args=[self.bill.id])
+        self.client.post(approve_url) # RECEIVING -> DATA_ENTRY
+        self.client.post(approve_url) # DATA_ENTRY -> SUPERVISOR
+        self.bill.refresh_from_db()
+        self.assertEqual(self.bill.current_status, BillStatus.SUPERVISOR)
+
+        # Hold it using Supervisor credentials
+        self.set_auth_credentials(self.supervisor_token)
+        hold_url = reverse("workflow-hold", args=[self.bill.id])
+        self.client.post(hold_url, {
+            "reason_code": WorkflowHoldReason.QUANTITY_DISCREPANCY,
+            "comments": "Quantity check",
+        })
+
+        # Try to resume as Data Entry user (unauthorized for supervisor status)
+        self.set_auth_credentials(self.entry_token)
+        resume_url = reverse("workflow-resume", args=[self.bill.id])
+        response = self.client.post(resume_url, {"comments": "Resuming"})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.users.serializers import UserSummarySerializer
 from .models import WorkflowHistory
-from core.choices import WorkflowRejectReason
+from core.choices import WorkflowRejectReason, WorkflowHoldReason
 
 
 class WorkflowHistorySerializer(serializers.ModelSerializer):
@@ -68,3 +68,50 @@ class WorkflowRejectSerializer(serializers.Serializer):
             )
 
         return attrs
+
+
+class WorkflowHoldSerializer(serializers.Serializer):
+    """
+    Validates payload to place a bill on hold.
+    """
+
+    reason_code = serializers.ChoiceField(
+        choices=WorkflowHoldReason.choices,
+        help_text="Predefined hold reason code.",
+    )
+    reason_note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Detailed note. Required if reason code is 'Other'.",
+    )
+    comments = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional remarks for hold action.",
+    )
+
+    def validate(self, attrs):
+        reason_code = attrs.get("reason_code")
+        reason_note = attrs.get("reason_note", "").strip()
+
+        if reason_code == WorkflowHoldReason.OTHER and not reason_note:
+            raise serializers.ValidationError(
+                {"reason_note": ["Custom hold reason notes are required when 'Other' is selected."]}
+            )
+
+        return attrs
+
+
+class WorkflowResumeSerializer(serializers.Serializer):
+    """
+    Validates payload to resume a held bill.
+    """
+
+    comments = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional remarks for resume action.",
+    )
