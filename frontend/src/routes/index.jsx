@@ -14,6 +14,8 @@ const DashboardLayout = lazy(() => import("@/layouts/DashboardLayout"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/DashboardPage"));
 const SettingsPage = lazy(() => import("@/features/dashboard/pages/SettingsPage"));
 const DepartmentsPage = lazy(() => import("@/features/departments/pages/DepartmentsPage"));
+const VendorsPage = lazy(() => import("@/features/vendors/pages/VendorsPage"));
+const VendorDetailsPage = lazy(() => import("@/features/vendors/pages/VendorDetailsPage"));
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -67,12 +69,11 @@ export const AppRoutes = () => {
           />
           <Route
             path="vendors"
-            element={
-              <div className="p-6 bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-                <h2 className="text-lg font-bold text-zinc-900 font-sans">Vendors List</h2>
-                <p className="text-xs text-zinc-500 font-sans mt-1">Vendor records database panel.</p>
-              </div>
-            }
+            element={<VendorsPage />}
+          />
+          <Route
+            path="vendors/:id"
+            element={<VendorDetailsPage />}
           />
           <Route
             path="bills"

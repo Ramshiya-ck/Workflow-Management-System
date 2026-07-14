@@ -1,0 +1,80 @@
+import React, { useEffect } from "react";
+import { X } from "lucide-react";
+import VendorForm from "./VendorForm";
+
+/**
+ * Modal dialog to modify vendor specifications. Supports keyboard close gestures and screen-reader tags.
+ */
+const EditVendorDialog = ({ isOpen, onClose, onSubmit, isLoading, vendor }) => {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const defaultValues = vendor
+    ? {
+        name: vendor.name,
+        code: vendor.code,
+        contactPerson: vendor.contactPerson || "",
+        email: vendor.email || "",
+        phone: vendor.phone || "",
+        address: vendor.address || "",
+        gstNumber: vendor.gstNumber || "",
+        isActive: vendor.isActive !== undefined ? vendor.isActive : true,
+      }
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm" 
+        onClick={onClose} 
+        aria-hidden="true"
+      />
+      
+      {/* Modal Card */}
+      <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-vendor-title"
+        className="bg-white rounded-xl border border-zinc-200 shadow-[0_20px_50px_rgba(0,0,0,0.08)] max-w-lg w-full p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200"
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-zinc-455 hover:bg-zinc-100 hover:text-zinc-800 p-1.5 rounded-lg transition-all cursor-pointer"
+          aria-label="Close dialog"
+        >
+          <X className="size-4" />
+        </button>
+
+        <div className="mb-4">
+          <h3 id="edit-vendor-title" className="text-base font-bold text-zinc-900 leading-tight">
+            Edit Vendor
+          </h3>
+          <p className="text-[11px] text-zinc-400 mt-1 font-semibold leading-normal">
+            Modify supplier profile name, contact person, or active status details.
+          </p>
+        </div>
+
+        <VendorForm
+          defaultValues={defaultValues}
+          onSubmit={onSubmit}
+          isLoading={isLoading}
+          buttonText="Save Changes"
+        />
+      </div>
+    </div>
+  );
+};
+
+export default React.memo(EditVendorDialog);
