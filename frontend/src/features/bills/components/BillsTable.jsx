@@ -4,7 +4,7 @@ import BillRow from "./BillRow";
 /**
  * Reusable table container displaying invoice workflows.
  */
-const BillsTable = ({ bills, onEdit, onDelete }) => {
+const BillsTable = ({ bills, onEdit, onDelete, canEdit, canDelete }) => {
   return (
     <div className="bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden font-sans select-none">
       <div className="overflow-x-auto">
@@ -30,6 +30,8 @@ const BillsTable = ({ bills, onEdit, onDelete }) => {
                 bill={bill}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                canEdit={canEdit}
+                canDelete={canDelete}
               />
             ))}
           </tbody>

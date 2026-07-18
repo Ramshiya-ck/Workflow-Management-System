@@ -58,7 +58,13 @@ export const deleteBill = async (id) => {
  */
 export const getVendorOptions = async () => {
   const response = await apiClient.get("/vendors/?is_active=true");
-  return response.data?.data?.results || [];
+  const results = response.data?.data?.results || [];
+  return results.map((v) => ({
+    id: v.id,
+    name: v.name,
+    gstNumber: v.gst_number,
+    code: v.code,
+  }));
 };
 
 /**

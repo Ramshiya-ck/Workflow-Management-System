@@ -20,7 +20,14 @@ class WorkflowViewSet(viewsets.ViewSet):
     Delegates all execution and checks to WorkflowService.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ["approve", "resume"]:
+            from core.permissions.roles import HasPrivilege
+            return [HasPrivilege("approve_transition")]
+        elif self.action in ["reject", "hold"]:
+            from core.permissions.roles import HasPrivilege
+            return [HasPrivilege("reject_bills")]
+        return [permissions.IsAuthenticated()]
 
     @action(detail=False, methods=["get"], url_path="pending")
     def pending(self, request):
@@ -137,5 +144,38 @@ class WorkflowViewSet(viewsets.ViewSet):
                 "success": True,
                 "message": "Bill workflow resumed successfully.",
                 "data": response_serializer.data,
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="logs")
+    def logs(self, request):
+        from django.db.models import Q
+        from .models import WorkflowHistory
+
+        queryset = WorkflowHistory.objects.select_related("bill", "performed_by").order_by("-created_at")
+
+        search = request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(bill__bill_number__icontains=search)
+                | Q(performed_by__first_name__icontains=search)
+                | Q(performed_by__email__icontains=search)
+                | Q(action__icontains=search)
+            )
+
+        paginator = StandardResultsSetPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+        serializer = WorkflowHistorySerializer(paginated_queryset, many=True)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Workflow history logs retrieved successfully.",
+                "data": {
+                    "count": paginator.page.paginator.count,
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": serializer.data,
+                },
             }
         )

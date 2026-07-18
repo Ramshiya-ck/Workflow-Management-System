@@ -5,7 +5,7 @@ import { z } from "zod";
  */
 export const billSchema = z.object({
   vendor: z.string().min(1, "Please select an associated vendor"),
-  department: z.string().min(1, "Please select an internal department"),
+  department: z.string().optional().or(z.literal("")),
   billNumber: z
     .string()
     .min(1, "Invoice number is required")

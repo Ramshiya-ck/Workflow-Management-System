@@ -7,7 +7,7 @@ import TrackingBadge from "./TrackingBadge";
 /**
  * Mobile-responsive card layout block for bills listings.
  */
-const BillCard = ({ bill, onEdit, onDelete }) => {
+const BillCard = ({ bill, onEdit, onDelete, canEdit, canDelete }) => {
   return (
     <div className="bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)] p-5 space-y-4 font-sans text-xs flex flex-col justify-between">
       <div className="space-y-2">
@@ -51,20 +51,24 @@ const BillCard = ({ bill, onEdit, onDelete }) => {
           >
             <Eye className="size-3.5" />
           </Link>
-          <button
-            onClick={() => onEdit(bill)}
-            className="p-1.5 rounded-md hover:bg-zinc-100 hover:text-zinc-800 transition-all cursor-pointer"
-            title="Edit"
-          >
-            <Edit2 className="size-3.5" />
-          </button>
-          <button
-            onClick={() => onDelete(bill)}
-            className="p-1.5 rounded-md hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
-            title="Delete"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => onEdit(bill)}
+              className="p-1.5 rounded-md hover:bg-zinc-100 hover:text-zinc-800 transition-all cursor-pointer"
+              title="Edit"
+            >
+              <Edit2 className="size-3.5" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => onDelete(bill)}
+              className="p-1.5 rounded-md hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
+              title="Delete"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

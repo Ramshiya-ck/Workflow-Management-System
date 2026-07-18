@@ -1,9 +1,11 @@
 export const ROLE_HOME_ROUTES = {
   SUPER_ADMIN: "/",
+  RECEIVING: "/",
   DATA_ENTRY: "/",
   SUPERVISOR: "/",
-  DEPARTMENT_MANAGER: "/",
+  MANAGER: "/",
   ACCOUNTS: "/",
+  AUDIT_MANAGER: "/",
 };
 
 /**

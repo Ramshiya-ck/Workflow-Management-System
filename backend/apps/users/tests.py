@@ -58,3 +58,92 @@ class UserModuleTests(APITestCase):
         # Assert user is deactivated in database
         self.normal_user.refresh_from_db()
         self.assertFalse(self.normal_user.is_active)
+
+    def test_create_user_success(self):
+        # Create department
+        from apps.departments.models import Department
+        dept = Department.objects.create(name="HR Department", code="HRD", is_active=True)
+
+        payload = {
+            "email": "newuser@aak.com",
+            "password": "Password123",
+            "first_name": "New",
+            "last_name": "User",
+            "phone_number": "+919999888877",
+            "role": "DATA_ENTRY",
+            "department_id": dept.id,
+            "is_active": True,
+        }
+        response = self.client.post(self.users_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email="newuser@aak.com").exists())
+        user = User.objects.get(email="newuser@aak.com")
+        self.assertEqual(user.department, dept)
+        self.assertEqual(user.role, "DATA_ENTRY")
+        self.assertEqual(user.created_by, self.super_admin)
+
+    def test_update_user_fields(self):
+        from apps.departments.models import Department
+        dept = Department.objects.create(name="Finance Dept", code="FIN", is_active=True)
+
+        detail_url = reverse("users-detail", args=[self.normal_user.pk])
+        payload = {
+            "first_name": "UpdatedNormal",
+            "department_id": dept.id,
+            "role": "MANAGER",
+        }
+        response = self.client.patch(detail_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertEqual(self.normal_user.first_name, "UpdatedNormal")
+        self.assertEqual(self.normal_user.department, dept)
+        self.assertEqual(self.normal_user.role, "MANAGER")
+        self.assertEqual(self.normal_user.updated_by, self.super_admin)
+
+    def test_activate_deactivate_actions(self):
+        # Deactivate
+        deactivate_url = reverse("users-deactivate", args=[self.normal_user.pk])
+        response = self.client.post(deactivate_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertFalse(self.normal_user.is_active)
+
+        # Activate
+        activate_url = reverse("users-activate", args=[self.normal_user.pk])
+        response = self.client.post(activate_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertTrue(self.normal_user.is_active)
+
+    def test_reset_password(self):
+        reset_url = reverse("users-reset-password", args=[self.normal_user.pk])
+        # Try weak password
+        response = self.client.post(reset_url, {"password": "weak"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Try strong password
+        response = self.client.post(reset_url, {"password": "NewStrongPassword123"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_roles_choices(self):
+        roles_url = reverse("users-roles")
+        response = self.client.get(roles_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        roles = response.data["data"]
+        roles_values = [r["value"] for r in roles]
+        self.assertIn("SUPER_ADMIN", roles_values)
+        self.assertIn("MANAGER", roles_values)
+
+    def test_role_restrictions_403(self):
+        # Logout super admin, login normal user
+        response = self.client.post(
+            self.login_url, {"email": "user@aak.com", "password": "securepassword123"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user_token = response.data["data"]["tokens"]["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {user_token}")
+
+        # Attempt to list users
+        response = self.client.get(self.users_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+

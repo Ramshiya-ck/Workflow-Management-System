@@ -17,9 +17,11 @@ const VendorCard = ({ vendor, onEdit, onDelete }) => {
             >
               {vendor.name}
             </Link>
-            <span className="font-mono font-bold text-[10px] text-zinc-400 tracking-wider">
-              {vendor.code}
-            </span>
+            {vendor.gstNumber && (
+              <span className="text-[9px] font-bold text-zinc-400 tracking-wide uppercase">
+                GSTIN: {vendor.gstNumber}
+              </span>
+            )}
           </div>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase border
@@ -32,22 +34,19 @@ const VendorCard = ({ vendor, onEdit, onDelete }) => {
             {vendor.isActive ? "Active" : "Inactive"}
           </span>
         </div>
-
-        {vendor.gstNumber && (
-          <div className="text-[9px] font-bold text-zinc-400 tracking-wide uppercase">
-            GSTIN: {vendor.gstNumber}
-          </div>
-        )}
       </div>
 
       <div className="space-y-1.5 text-zinc-500 font-medium">
         <div className="flex justify-between">
-          <span>Contact:</span>
-          <span className="font-semibold text-zinc-700">{vendor.contactPerson || "N/A"}</span>
+          <span>Mobile:</span>
+          <span className="font-semibold text-zinc-700">{vendor.mobileNumber}</span>
         </div>
         <div className="flex justify-between">
-          <span>Email:</span>
-          <span className="font-semibold text-zinc-700 truncate max-w-[150px]">{vendor.email}</span>
+          <span>Credit Days:</span>
+          <span className="font-semibold text-zinc-700">{vendor.creditDays} Days</span>
+        </div>
+        <div className="text-[10px] text-zinc-400 font-medium line-clamp-2 mt-1">
+          {vendor.address}
         </div>
       </div>
 

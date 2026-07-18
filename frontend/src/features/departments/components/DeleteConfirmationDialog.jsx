@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 /**
  * Confirm dialog prompt for permanent deletions of department rows. Supports keyboard close gestures and screen-reader tags.
  */
-const DeleteConfirmationDialog = ({ isOpen, onClose, onConfirm, isLoading, departmentName }) => {
+const DeleteConfirmationDialog = ({ isOpen, onClose, onConfirm, isLoading, departmentName, error }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -57,6 +57,12 @@ const DeleteConfirmationDialog = ({ isOpen, onClose, onConfirm, isLoading, depar
               Are you sure you want to delete <span className="font-bold text-zinc-900">"{departmentName}"</span>? This action is permanent and cannot be undone.
             </p>
           </div>
+
+          {error && (
+            <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg text-[10px] text-red-600 font-semibold text-left w-full leading-normal">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-2 w-full pt-2">
             <Button

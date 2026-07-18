@@ -3,12 +3,16 @@ import { AlertTriangle, Users, FileText, ShieldCheck, ShieldAlert, Receipt, Buil
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useDashboard } from "../hooks/useDashboard";
 import { useDashboardBills } from "../hooks/useDashboardBills";
+import { useDepartments } from "@/features/departments/hooks/useDepartments";
 import PageHeader from "@/components/common/PageHeader";
 import StatCard from "../components/StatCard";
 import PendingBillsCard from "../components/PendingBillsCard";
+import AuditQueueCard from "../components/AuditQueueCard";
+import ReceivingRegistrationCard from "../components/ReceivingRegistrationCard";
 import WorkflowStatusCard from "../components/WorkflowStatusCard";
 import QuickActionsCard from "../components/QuickActionsCard";
 import ChartCard from "../components/ChartCard";
+import RecentActivityCard from "../components/RecentActivityCard";
 import Skeleton from "@/components/common/Skeleton";
 
 /**
@@ -17,13 +21,42 @@ import Skeleton from "@/components/common/Skeleton";
 const DashboardPage = () => {
   const { user } = useAuth();
   const isSuperUser = user?.is_superuser || user?.role === "SUPER_ADMIN";
-  const [view] = useState(isSuperUser ? "" : (user?.role === "DATA_ENTRY" ? "entry" : ""));
+  const isAuditManager = user?.role === "AUDIT_MANAGER";
+  const isAuditOrAdmin = isSuperUser || isAuditManager;
+  const isReceivingRole = user?.role === "RECEIVING";
 
-  // React Query hooks to fetch dashboard KPIs and pending bills lists
+  const [view] = useState(
+    isSuperUser
+      ? ""
+      : user?.role === "RECEIVING"
+      ? "receiving"
+      : user?.role === "DATA_ENTRY"
+      ? "entry"
+      : ""
+  );
+
+  // Dynamic audit queue filters state
+  const [deptFilter, setDeptFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const billsParams = React.useMemo(() => {
+    const params = {};
+    if (isAuditOrAdmin) {
+      params.page_size = 100;
+      if (deptFilter) params.department = deptFilter;
+      if (statusFilter) params.current_status = statusFilter;
+    }
+    return params;
+  }, [isAuditOrAdmin, deptFilter, statusFilter]);
+
+  // React Query hooks to fetch dashboard KPIs, pending bills lists and departments
   const { data: metricsResponse, isLoading: isMetricsLoading, error: metricsError } = useDashboard(view);
-  const { data: bills, isLoading: isBillsLoading, error: billsError } = useDashboardBills();
+  const { data: billsResponse, isLoading: isBillsLoading, error: billsError } = useDashboardBills(billsParams);
+  const { data: deptsResponse } = useDepartments({ is_active: true, page_size: 100 });
+  const departments = deptsResponse?.data?.results || [];
 
   const metrics = metricsResponse?.data;
+  const bills = billsResponse; // Since useDashboardBills already extracts raw result list or paginated data depending on params
 
   // Centralized Lucide Icon lookup map
   const getIconForTitle = (title) => {
@@ -77,10 +110,9 @@ const DashboardPage = () => {
   }, []);
 
   // Filter actions based on role
-  const isDataEntry = user?.role === "DATA_ENTRY" || user?.role === "RECEIVING";
-  const isApprover = user?.role === "SUPERVISOR" || user?.role === "DEPARTMENT_MANAGER" || user?.role === "ACCOUNTS" || user?.is_superuser;
+  const isApprover = user?.role === "SUPERVISOR" || user?.role === "MANAGER" || user?.role === "ACCOUNTS" || user?.role === "AUDIT_MANAGER" || user?.is_superuser;
 
-  const showCreateBill = user?.is_superuser || isDataEntry;
+  const showCreateBill = isSuperUser || isReceivingRole;
   const showReviewWorkflow = true;
   const showExportReports = user?.is_superuser || isApprover;
   const showAuditLogs = user?.is_superuser || user?.role === "SUPER_ADMIN";
@@ -167,7 +199,20 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Bills and Workflow Distribution */}
         <div className="lg:col-span-2 space-y-6">
-          <PendingBillsCard bills={formattedPendingBills} />
+          {isAuditOrAdmin ? (
+            <AuditQueueCard
+              bills={bills || []}
+              deptFilter={deptFilter}
+              onDeptFilterChange={setDeptFilter}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              departments={departments}
+            />
+          ) : isReceivingRole ? (
+            <ReceivingRegistrationCard />
+          ) : (
+            <PendingBillsCard bills={formattedPendingBills} />
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <ChartCard title="Bill Clearances Trend" subtitle="Monthly clearance and volume graphs" />
@@ -183,6 +228,9 @@ const DashboardPage = () => {
             onExportReports={showExportReports ? handleExportReports : undefined}
             onAuditLogs={showAuditLogs ? handleAuditLogs : undefined}
           />
+          {isAuditOrAdmin && (
+            <RecentActivityCard activities={metrics?.recent_activities || []} />
+          )}
         </div>
       </div>
     </div>

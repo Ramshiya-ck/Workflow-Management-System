@@ -27,17 +27,12 @@ const DepartmentCard = ({ department, onEdit, onDelete }) => {
           </span>
         </div>
 
-        {department.description && (
-          <p className="text-[10px] text-zinc-500 font-medium leading-relaxed line-clamp-2">
-            {department.description}
-          </p>
-        )}
       </div>
 
       <div className="pt-2 border-t border-zinc-100 flex items-center justify-between text-zinc-400">
         <div className="space-y-0.5">
-          <span className="text-[9px] text-zinc-400 font-bold block uppercase tracking-wider">Manager</span>
-          <span className="font-semibold text-zinc-700 block">{department.managerName || "Unassigned"}</span>
+          <span className="text-[9px] text-zinc-400 font-bold block uppercase tracking-wider">Created Date</span>
+          <span className="font-semibold text-zinc-700 block">{department.createdDate}</span>
         </div>
 
         <div className="flex gap-1">

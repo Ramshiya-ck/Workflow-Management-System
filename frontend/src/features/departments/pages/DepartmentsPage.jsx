@@ -32,7 +32,6 @@ const ORDERING_MAP = {
 const DepartmentsPage = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [managerFilter, setManagerFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name-asc");
   const [viewMode, setViewMode] = useState("table");
 
@@ -70,7 +69,6 @@ const DepartmentsPage = () => {
       name: dept.name,
       code: dept.code,
       isActive: dept.is_active !== undefined ? dept.is_active : true,
-      managerName: "System Admin", // fallback since manager is not in DB model
       createdDate: dept.created_at 
         ? new Date(dept.created_at).toLocaleDateString("en-GB", {
             day: "2-digit",
@@ -81,18 +79,11 @@ const DepartmentsPage = () => {
     }));
   }, [listResponse]);
 
-  // Local actions filtering based on manager (if filter applied)
-  const filteredDepartments = useMemo(() => {
-    if (managerFilter !== "all") {
-      return []; // manager filter always yields empty in list since it is a mock filter
-    }
-    return mappedDepartments;
-  }, [mappedDepartments, managerFilter]);
+  const filteredDepartments = mappedDepartments;
 
   const handleResetFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-    setManagerFilter("all");
     setSortBy("name-asc");
   }, []);
 
@@ -176,10 +167,8 @@ const DepartmentsPage = () => {
           <SearchBar value={search} onChange={setSearch} onClear={() => setSearch("")} />
           <FiltersBar
             status={statusFilter}
-            managerId={managerFilter}
             sortBy={sortBy}
             onStatusChange={setStatusFilter}
-            onManagerChange={setManagerFilter}
             onSortChange={setSortBy}
             onReset={handleResetFilters}
           />
@@ -224,7 +213,7 @@ const DepartmentsPage = () => {
         ) : filteredDepartments.length === 0 ? (
           <DepartmentEmptyState
             onReset={handleResetFilters}
-            hasFilters={search || statusFilter !== "all" || managerFilter !== "all"}
+            hasFilters={search || statusFilter !== "all"}
           />
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -252,6 +241,23 @@ const DepartmentsPage = () => {
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreateSubmit}
         isLoading={isMutating}
+        error={(() => {
+          const error = createMutation.error;
+          if (!error) return null;
+          const data = error.response?.data;
+          if (typeof data === "string") return data;
+          if (Array.isArray(data)) return data[0];
+          if (data && typeof data === "object") {
+            if (data.detail) return data.detail;
+            if (data.message) return data.message;
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              return Array.isArray(val) ? val[0] : String(val);
+            }
+          }
+          return error.message || "An unexpected error occurred.";
+        })()}
       />
 
       <EditDepartmentDialog
@@ -260,6 +266,23 @@ const DepartmentsPage = () => {
         onSubmit={handleEditSubmit}
         isLoading={isMutating}
         department={selectedDept}
+        error={(() => {
+          const error = updateMutation.error;
+          if (!error) return null;
+          const data = error.response?.data;
+          if (typeof data === "string") return data;
+          if (Array.isArray(data)) return data[0];
+          if (data && typeof data === "object") {
+            if (data.detail) return data.detail;
+            if (data.message) return data.message;
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              return Array.isArray(val) ? val[0] : String(val);
+            }
+          }
+          return error.message || "An unexpected error occurred.";
+        })()}
       />
 
       <DeleteConfirmationDialog
@@ -268,6 +291,23 @@ const DepartmentsPage = () => {
         onConfirm={handleDeleteConfirm}
         isLoading={isMutating}
         departmentName={selectedDept?.name}
+        error={(() => {
+          const error = deleteMutation.error;
+          if (!error) return null;
+          const data = error.response?.data;
+          if (typeof data === "string") return data;
+          if (Array.isArray(data)) return data[0];
+          if (data && typeof data === "object") {
+            if (data.detail) return data.detail;
+            if (data.message) return data.message;
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              return Array.isArray(val) ? val[0] : String(val);
+            }
+          }
+          return error.message || "An unexpected error occurred.";
+        })()}
       />
     </div>
   );

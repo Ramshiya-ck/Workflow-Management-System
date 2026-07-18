@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import PageHeader from "@/components/common/PageHeader";
@@ -12,6 +12,7 @@ import { getVendorOptions, getDepartmentOptions } from "../api/bills.api";
 const CreateBillPage = () => {
   const navigate = useNavigate();
   const createMutation = useCreateBill();
+  const [apiErrors, setApiErrors] = useState({});
 
   // Retrieve dropdown lists dynamically from database ViewSets
   const { data: vendors = [], isLoading: isVendorsLoading } = useQuery({
@@ -27,9 +28,14 @@ const CreateBillPage = () => {
   });
 
   const handleSubmit = (data) => {
+    setApiErrors({});
     createMutation.mutate(data, {
       onSuccess: () => {
         navigate("/bills");
+      },
+      onError: (err) => {
+        const errors = err?.response?.data?.errors || {};
+        setApiErrors(errors);
       },
     });
   };
@@ -55,6 +61,7 @@ const CreateBillPage = () => {
           vendors={vendors}
           departments={departments}
           buttonText="Register & Start Workflow"
+          apiErrors={apiErrors}
         />
       </div>
     </div>

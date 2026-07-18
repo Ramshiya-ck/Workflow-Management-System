@@ -47,12 +47,12 @@ class IsSupervisor(BasePermission):
         )
 
 
-class IsDepartmentManager(BasePermission):
+class IsManager(BasePermission):
     def has_permission(self, request, view):
         return (
             request.user
             and request.user.is_authenticated
-            and (request.user.role == "DEPARTMENT_MANAGER" or request.user.is_superuser)
+            and (request.user.role == "MANAGER" or request.user.is_superuser)
         )
 
 
@@ -63,3 +63,47 @@ class IsAccounts(BasePermission):
             and request.user.is_authenticated
             and (request.user.role == "ACCOUNTS" or request.user.is_superuser)
         )
+
+
+class HasPrivilege(BasePermission):
+    """
+    Enforces dynamic privileges configured by the Super Admin.
+    """
+    def __init__(self, privilege_key):
+        self.privilege_key = privilege_key
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Super Admin bypasses all checks
+        if request.user.is_superuser or request.user.role == "SUPER_ADMIN":
+            return True
+
+        # Receiving role is always allowed to create/edit bills and view audit logs
+        if request.user.role == "RECEIVING":
+            if self.privilege_key in ["create_bills", "view_audit"]:
+                return True
+
+        # Look up settings
+        try:
+            from apps.users.models import SystemSetting
+            setting = SystemSetting.objects.filter(key="system_config").first()
+            if setting:
+                permissions = setting.value.get("permissions", {})
+                privilege = permissions.get(self.privilege_key, {})
+                return privilege.get(request.user.role, False)
+        except Exception:
+            pass
+
+        # Fallback to defaults
+        DEFAULTS = {
+            "create_bills": ["RECEIVING"],
+            "assign_depts": ["DATA_ENTRY", "RECEIVING", "SUPERVISOR"],
+            "approve_transition": ["DATA_ENTRY", "RECEIVING", "SUPERVISOR", "MANAGER", "ACCOUNTS"],
+            "reject_bills": ["DATA_ENTRY", "RECEIVING", "SUPERVISOR", "MANAGER", "ACCOUNTS"],
+            "view_audit": ["DATA_ENTRY", "RECEIVING", "SUPERVISOR", "MANAGER", "ACCOUNTS"],
+            "export_reports": ["MANAGER", "ACCOUNTS"],
+        }
+        allowed = DEFAULTS.get(self.privilege_key, [])
+        return request.user.role in allowed

@@ -10,21 +10,11 @@ const DepartmentRow = ({ department, onEdit, onDelete }) => {
       {/* Department Name */}
       <td className="p-4 align-middle">
         <div className="font-bold text-zinc-900">{department.name}</div>
-        {department.description && (
-          <div className="text-[10px] text-zinc-400 font-semibold truncate max-w-xs mt-0.5" title={department.description}>
-            {department.description}
-          </div>
-        )}
       </td>
 
       {/* Code */}
       <td className="p-4 align-middle font-mono font-bold text-zinc-650 tracking-wider">
         {department.code}
-      </td>
-
-      {/* Manager */}
-      <td className="p-4 align-middle text-zinc-700 font-medium">
-        {department.managerName || "Unassigned"}
       </td>
 
       {/* Status Badge */}

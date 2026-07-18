@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 /**
  * Dialog overlay asking confirmation before executing permanent deletion of vendor records.
  */
-const DeleteVendorDialog = ({ isOpen, onClose, onConfirm, isLoading, vendorName }) => {
+const DeleteVendorDialog = ({ isOpen, onClose, onConfirm, isLoading, vendorName, error }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -57,6 +57,12 @@ const DeleteVendorDialog = ({ isOpen, onClose, onConfirm, isLoading, vendorName 
               Are you sure you want to delete <span className="font-bold text-zinc-900">"{vendorName}"</span>? This action is permanent and will remove associated history logs.
             </p>
           </div>
+
+          {error && (
+            <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg text-[10px] text-red-600 font-semibold text-left w-full leading-normal">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-2 w-full pt-2">
             <Button

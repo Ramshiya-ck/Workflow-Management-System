@@ -7,7 +7,7 @@ import TrackingBadge from "./TrackingBadge";
 /**
  * Standard table row layout for invoice records.
  */
-const BillRow = ({ bill, onEdit, onDelete }) => {
+const BillRow = ({ bill, onEdit, onDelete, canEdit, canDelete }) => {
   return (
     <tr className="hover:bg-zinc-50/50 transition-colors border-b border-zinc-100 last:border-0 font-sans text-xs">
       {/* Tracking ID */}
@@ -70,20 +70,24 @@ const BillRow = ({ bill, onEdit, onDelete }) => {
           >
             <Eye className="size-3.5" />
           </Link>
-          <button
-            onClick={() => onEdit(bill)}
-            className="p-1.5 rounded-md text-zinc-455 hover:bg-zinc-100 hover:text-zinc-800 transition-all cursor-pointer"
-            title="Edit Bill"
-          >
-            <Edit2 className="size-3.5" />
-          </button>
-          <button
-            onClick={() => onDelete(bill)}
-            className="p-1.5 rounded-md text-zinc-455 hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
-            title="Delete Bill"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => onEdit(bill)}
+              className="p-1.5 rounded-md text-zinc-455 hover:bg-zinc-100 hover:text-zinc-800 transition-all cursor-pointer"
+              title="Edit Bill"
+            >
+              <Edit2 className="size-3.5" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => onDelete(bill)}
+              className="p-1.5 rounded-md text-zinc-455 hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
+              title="Delete Bill"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
       </td>
     </tr>

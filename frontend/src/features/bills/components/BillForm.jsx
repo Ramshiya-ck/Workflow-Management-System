@@ -17,6 +17,7 @@ const BillForm = ({
   vendors = [],
   departments = [],
   buttonText = "Save Bill",
+  apiErrors = {},
 }) => {
   const {
     register,
@@ -90,9 +91,9 @@ const BillForm = ({
             placeholder="e.g. INV-2026-99"
             disabled={isLoading}
             {...register("billNumber")}
-            className={errors.billNumber ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={errors.billNumber || apiErrors?.bill_number ? "border-destructive focus-visible:ring-destructive" : ""}
           />
-          <FormError message={errors.billNumber?.message} />
+          <FormError message={errors.billNumber?.message || apiErrors?.bill_number?.[0]} />
         </div>
 
         {/* Bill Date */}

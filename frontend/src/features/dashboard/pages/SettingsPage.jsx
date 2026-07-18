@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Shield, KeyRound, Lock, EyeOff, Save, CheckCircle, HelpCircle } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useSystemSettings, useUpdateSystemSettings } from "../hooks/useSettings";
 
 /**
  * Super Admin Settings panel managing role permissions, session bounds, and encryption details.
@@ -13,14 +14,18 @@ const SettingsPage = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Load and save query hooks
+  const { data: settingsResponse, isLoading } = useSystemSettings();
+  const updateMutation = useUpdateSystemSettings();
+
   // 1. Role-based Permission Matrix State
   const [permissions, setPermissions] = useState({
-    create_bills: { name: "Create & Edit Bills", DATA_ENTRY: true, SUPERVISOR: false, DEPARTMENT_MANAGER: false, ACCOUNTS: false },
-    assign_depts: { name: "Assign Store Departments", DATA_ENTRY: true, SUPERVISOR: true, DEPARTMENT_MANAGER: false, ACCOUNTS: false },
-    approve_transition: { name: "Authorize Step Transitions", DATA_ENTRY: false, SUPERVISOR: true, DEPARTMENT_MANAGER: true, ACCOUNTS: true },
-    reject_bills: { name: "Execute Step Rejections", DATA_ENTRY: false, SUPERVISOR: true, DEPARTMENT_MANAGER: true, ACCOUNTS: true },
-    view_audit: { name: "View System Audit Trails", DATA_ENTRY: true, SUPERVISOR: true, DEPARTMENT_MANAGER: true, ACCOUNTS: true },
-    export_reports: { name: "Export Financial Reports", DATA_ENTRY: false, SUPERVISOR: false, DEPARTMENT_MANAGER: true, ACCOUNTS: true },
+    create_bills: { name: "Create & Edit Bills", DATA_ENTRY: true, SUPERVISOR: false, MANAGER: false, ACCOUNTS: false },
+    assign_depts: { name: "Assign Store Departments", DATA_ENTRY: true, SUPERVISOR: true, MANAGER: false, ACCOUNTS: false },
+    approve_transition: { name: "Authorize Step Transitions", DATA_ENTRY: false, SUPERVISOR: true, MANAGER: true, ACCOUNTS: true },
+    reject_bills: { name: "Execute Step Rejections", DATA_ENTRY: false, SUPERVISOR: true, MANAGER: true, ACCOUNTS: true },
+    view_audit: { name: "View System Audit Trails", DATA_ENTRY: true, SUPERVISOR: true, MANAGER: true, ACCOUNTS: true },
+    export_reports: { name: "Export Financial Reports", DATA_ENTRY: false, SUPERVISOR: false, MANAGER: true, ACCOUNTS: true },
   });
 
   // 2. Security Configurations
@@ -38,6 +43,16 @@ const SettingsPage = () => {
     encryptBackups: true,
   });
 
+  // Update local states when data is loaded from API
+  useEffect(() => {
+    if (settingsResponse?.data) {
+      const config = settingsResponse.data;
+      if (config.permissions) setPermissions(config.permissions);
+      if (config.security) setSecurity(config.security);
+      if (config.privacy) setPrivacy(config.privacy);
+    }
+  }, [settingsResponse]);
+
   const handlePermissionChange = (permKey, role) => {
     setPermissions((prev) => ({
       ...prev,
@@ -50,11 +65,19 @@ const SettingsPage = () => {
 
   const handleSave = () => {
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3000);
-    }, 1000);
+    updateMutation.mutate(
+      { permissions, security, privacy },
+      {
+        onSuccess: () => {
+          setIsSaving(false);
+          setIsSaved(true);
+          setTimeout(() => setIsSaved(false), 3000);
+        },
+        onError: () => {
+          setIsSaving(false);
+        },
+      }
+    );
   };
 
   const breadcrumbs = [
@@ -136,7 +159,7 @@ const SettingsPage = () => {
                   {Object.entries(permissions).map(([key, row]) => (
                     <tr key={key} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="p-4 font-bold text-zinc-900">{row.name}</td>
-                      {["DATA_ENTRY", "SUPERVISOR", "DEPARTMENT_MANAGER", "ACCOUNTS"].map((role) => (
+                      {["DATA_ENTRY", "SUPERVISOR", "MANAGER", "ACCOUNTS"].map((role) => (
                         <td key={role} className="p-4 text-center">
                           <div className="flex justify-center">
                             <Checkbox

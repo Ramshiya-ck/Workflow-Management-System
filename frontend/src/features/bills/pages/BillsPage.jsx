@@ -9,6 +9,8 @@ import BillCard from "../components/BillCard";
 import BillEmptyState from "../components/BillEmptyState";
 import BillSkeleton from "../components/BillSkeleton";
 import DeleteBillDialog from "../components/DeleteBillDialog";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useSystemSettings } from "@/features/dashboard/hooks/useSettings";
 
 import { useBills } from "../hooks/useBills";
 import { useDeleteBill } from "../hooks/useDeleteBill";
@@ -18,6 +20,11 @@ import { useDeleteBill } from "../hooks/useDeleteBill";
  */
 const BillsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: settingsResponse } = useSystemSettings();
+  const settings = settingsResponse?.data;
+
+  const canCreateBills = user?.is_superuser || user?.role === "SUPER_ADMIN" || user?.role === "RECEIVING" || !!settings?.permissions?.create_bills?.[user?.role];
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -125,12 +132,14 @@ const BillsPage = () => {
         subtitle="Track hypermarket supplier invoices, invoice statuses, and clearance workflows."
         breadcrumbs={breadcrumbs}
         primaryAction={
-          <Link to="/bills/create">
-            <Button className="cursor-pointer gap-2 shadow-sm">
-              <Plus className="size-4" />
-              <span>Create Bill</span>
-            </Button>
-          </Link>
+          canCreateBills ? (
+            <Link to="/bills/create">
+              <Button className="cursor-pointer gap-2 shadow-sm">
+                <Plus className="size-4" />
+                <span>Create Bill</span>
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 
@@ -203,6 +212,8 @@ const BillsPage = () => {
                     bill={bill}
                     onEdit={handleEditClick}
                     onDelete={handleDeleteClick}
+                    canEdit={canCreateBills}
+                    canDelete={canCreateBills}
                   />
                 ))}
               </div>
@@ -211,6 +222,8 @@ const BillsPage = () => {
                 bills={mappedBills}
                 onEdit={handleEditClick}
                 onDelete={handleDeleteClick}
+                canEdit={canCreateBills}
+                canDelete={canCreateBills}
               />
             )}
 
@@ -275,6 +288,23 @@ const BillsPage = () => {
         onConfirm={handleDeleteConfirm}
         isLoading={deleteMutation.isPending}
         billNumber={selectedBill?.billNumber}
+        error={(() => {
+          const error = deleteMutation.error;
+          if (!error) return null;
+          const data = error.response?.data;
+          if (typeof data === "string") return data;
+          if (Array.isArray(data)) return data[0];
+          if (data && typeof data === "object") {
+            if (data.detail) return data.detail;
+            if (data.message) return data.message;
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              return Array.isArray(val) ? val[0] : String(val);
+            }
+          }
+          return error.message || "An unexpected error occurred.";
+        })()}
       />
     </div>
   );

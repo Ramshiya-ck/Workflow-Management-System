@@ -22,10 +22,10 @@ export const getVendor = async (id) => {
 export const createVendor = async (data) => {
   const response = await apiClient.post("/vendors/", {
     name: data.name,
-    address: data.address || "N/A",
-    mobile_number: data.phone || "+91 9999999999",
+    address: data.address,
+    mobile_number: data.mobileNumber,
     gst_number: data.gstNumber,
-    credit_days: 30, // Default required payment window
+    credit_days: Number(data.creditDays),
     is_active: data.isActive,
   });
   return response.data;
@@ -38,8 +38,9 @@ export const updateVendor = async ({ id, data }) => {
   const payload = {};
   if (data.name) payload.name = data.name;
   if (data.address) payload.address = data.address;
-  if (data.phone) payload.mobile_number = data.phone;
+  if (data.mobileNumber) payload.mobile_number = data.mobileNumber;
   if (data.gstNumber) payload.gst_number = data.gstNumber;
+  if (data.creditDays !== undefined) payload.credit_days = Number(data.creditDays);
   if (data.isActive !== undefined) payload.is_active = data.isActive;
 
   const response = await apiClient.patch(`/vendors/${id}/`, payload);

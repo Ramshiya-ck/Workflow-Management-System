@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
+import { useAuth } from "@/features/auth/AuthContext";
 
 // Lazy loaded Auth Pages
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
@@ -24,6 +25,21 @@ const EditBillPage = lazy(() => import("@/features/bills/pages/EditBillPage"));
 // Lazy loaded Workflow Pages
 const WorkflowQueuePage = lazy(() => import("@/features/workflow/pages/WorkflowQueuePage"));
 const WorkflowDetailsPage = lazy(() => import("@/features/workflow/pages/WorkflowDetailsPage"));
+const WorkflowLogsPage = lazy(() => import("@/features/workflow/pages/WorkflowLogsPage"));
+
+// Lazy loaded Users Pages
+const UserListPage = lazy(() => import("@/features/users/pages/UserListPage"));
+const CreateUserPage = lazy(() => import("@/features/users/pages/CreateUserPage"));
+const EditUserPage = lazy(() => import("@/features/users/pages/EditUserPage"));
+const UserDetailsPage = lazy(() => import("@/features/users/pages/UserDetailsPage"));
+
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user && user.role !== "SUPER_ADMIN" && !user.is_superuser) {
+    return <Navigate to="/access-denied" replace />;
+  }
+  return children;
+};
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -80,6 +96,38 @@ export const AppRoutes = () => {
             element={<VendorsPage />}
           />
           <Route
+            path="users"
+            element={
+              <AdminRoute>
+                <UserListPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="users/new"
+            element={
+              <AdminRoute>
+                <CreateUserPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="users/:id"
+            element={
+              <AdminRoute>
+                <UserDetailsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="users/:id/edit"
+            element={
+              <AdminRoute>
+                <EditUserPage />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="vendors/:id"
             element={<VendorDetailsPage />}
           />
@@ -106,6 +154,10 @@ export const AppRoutes = () => {
           <Route
             path="workflow/:id"
             element={<WorkflowDetailsPage />}
+          />
+          <Route
+            path="logs"
+            element={<WorkflowLogsPage />}
           />
           <Route
             path="reports"

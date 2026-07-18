@@ -18,8 +18,10 @@ class DashboardView(views.APIView):
         user = request.user
 
         # Dispatch to the appropriate role-based dashboard service
-        if user.is_superuser or user.role == UserRole.SUPER_ADMIN:
+        if user.is_superuser or user.role in [UserRole.SUPER_ADMIN, UserRole.AUDIT_MANAGER]:
             metrics = DashboardService.get_super_admin_dashboard(user)
+        elif user.role == UserRole.RECEIVING:
+            metrics = DashboardService.get_receiving_dashboard(user)
         elif user.role == UserRole.DATA_ENTRY:
             # Accommodates both receiving and data entry dashboard queues for the data entry role
             view_param = request.query_params.get("view")
@@ -29,7 +31,7 @@ class DashboardView(views.APIView):
                 metrics = DashboardService.get_data_entry_dashboard(user)
         elif user.role == UserRole.SUPERVISOR:
             metrics = DashboardService.get_supervisor_dashboard(user)
-        elif user.role == UserRole.DEPARTMENT_MANAGER:
+        elif user.role == UserRole.MANAGER:
             metrics = DashboardService.get_manager_dashboard(user)
         elif user.role == UserRole.ACCOUNTS:
             metrics = DashboardService.get_accounts_dashboard(user)

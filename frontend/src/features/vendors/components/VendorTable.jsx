@@ -12,10 +12,9 @@ const VendorTable = ({ vendors, onEdit, onDelete }) => {
           <thead>
             <tr className="bg-zinc-50 border-b border-zinc-200/80 text-zinc-400 text-[10px] font-bold tracking-wider uppercase">
               <th className="p-4 w-1/4">Vendor Name</th>
-              <th className="p-4">Code</th>
-              <th className="p-4">Contact Person</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">Phone</th>
+              <th className="p-4">Mobile</th>
+              <th className="p-4">Credit Days</th>
+              <th className="p-4 w-1/4">Address</th>
               <th className="p-4">Status</th>
               <th className="p-4">Created Date</th>
               <th className="p-4 text-right">Actions</th>

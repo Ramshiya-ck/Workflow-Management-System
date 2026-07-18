@@ -15,8 +15,6 @@ export const departmentSchema = z.object({
     .max(10, "Maximum length is 10 characters")
     .toUpperCase()
     .trim()
-    .regex(/^[A-Z0-9]+$/, "Code must consist of uppercase alphanumeric characters only"),
-  managerId: z.string().min(1, "Please select a department manager"),
-  description: z.string().optional().default(""),
+    .regex(/^[A-Z]{2,10}$/, "Code must consist of 2 to 10 English letters only"),
   isActive: z.boolean().default(true),
 });

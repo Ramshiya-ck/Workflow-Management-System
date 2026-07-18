@@ -20,7 +20,11 @@ class BillViewSet(viewsets.ViewSet):
     Thin layer delegating all business logic to BillService.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            from core.permissions.roles import HasPrivilege
+            return [HasPrivilege("create_bills")]
+        return [permissions.IsAuthenticated()]
 
     def list(self, request):
         search = request.query_params.get("search")
@@ -130,4 +134,15 @@ class BillViewSet(viewsets.ViewSet):
                 "message": "Department assigned successfully.",
                 "data": response_serializer.data,
             }
+        )
+
+    def destroy(self, request, pk=None):
+        BillService.delete_bill(user=request.user, bill_id=pk)
+        return Response(
+            {
+                "success": True,
+                "message": "Bill deleted successfully.",
+                "data": None,
+            },
+            status=status.HTTP_200_OK,
         )

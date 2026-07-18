@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import PageHeader from "@/components/common/PageHeader";
@@ -18,6 +18,7 @@ const EditBillPage = () => {
   // Query details and dropdown options
   const { data: billResponse, isLoading: isBillLoading } = useBill(id);
   const updateMutation = useUpdateBill();
+  const [apiErrors, setApiErrors] = useState({});
 
   const { data: vendors = [], isLoading: isVendorsLoading } = useQuery({
     queryKey: ["vendor-options"],
@@ -37,8 +38,8 @@ const EditBillPage = () => {
   const defaultValues = useMemo(() => {
     if (!bill) return null;
     return {
-      vendor: bill.vendor?.id || "",
-      department: bill.department?.id || "",
+      vendor: bill.vendor?.id ? String(bill.vendor.id) : "",
+      department: bill.department?.id ? String(bill.department.id) : "",
       billNumber: bill.bill_number || "",
       billDate: bill.bill_date || "",
       amount: String(bill.amount || ""),
@@ -47,6 +48,7 @@ const EditBillPage = () => {
   }, [bill]);
 
   const handleSubmit = (data) => {
+    setApiErrors({});
     updateMutation.mutate(
       {
         id,
@@ -55,6 +57,10 @@ const EditBillPage = () => {
       {
         onSuccess: () => {
           navigate("/bills");
+        },
+        onError: (err) => {
+          const errors = err?.response?.data?.errors || {};
+          setApiErrors(errors);
         },
       }
     );
@@ -96,6 +102,7 @@ const EditBillPage = () => {
             vendors={vendors}
             departments={departments}
             buttonText="Save Invoice Changes"
+            apiErrors={apiErrors}
           />
         )}
       </div>

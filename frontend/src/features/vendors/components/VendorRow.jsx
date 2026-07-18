@@ -23,24 +23,19 @@ const VendorRow = ({ vendor, onEdit, onDelete }) => {
         )}
       </td>
 
-      {/* Code */}
-      <td className="p-4 align-middle font-mono font-bold text-zinc-650 tracking-wider">
-        {vendor.code}
+      {/* Mobile */}
+      <td className="p-4 align-middle text-zinc-700 font-semibold font-mono">
+        {vendor.mobileNumber}
       </td>
 
-      {/* Contact Person */}
+      {/* Credit Days */}
       <td className="p-4 align-middle text-zinc-700 font-medium">
-        {vendor.contactPerson || "N/A"}
+        {vendor.creditDays} Days
       </td>
 
-      {/* Email */}
-      <td className="p-4 align-middle text-zinc-450 font-semibold truncate max-w-xs">
-        {vendor.email}
-      </td>
-
-      {/* Phone */}
-      <td className="p-4 align-middle text-zinc-450 font-semibold font-mono">
-        {vendor.phone || "N/A"}
+      {/* Address */}
+      <td className="p-4 align-middle text-zinc-450 font-medium truncate max-w-xs" title={vendor.address}>
+        {vendor.address}
       </td>
 
       {/* Status Badge */}

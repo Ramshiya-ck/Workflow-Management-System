@@ -23,12 +23,10 @@ const EditVendorDialog = ({ isOpen, onClose, onSubmit, isLoading, vendor }) => {
   const defaultValues = vendor
     ? {
         name: vendor.name,
-        code: vendor.code,
-        contactPerson: vendor.contactPerson || "",
-        email: vendor.email || "",
-        phone: vendor.phone || "",
         address: vendor.address || "",
+        mobileNumber: vendor.mobileNumber || "",
         gstNumber: vendor.gstNumber || "",
+        creditDays: vendor.creditDays !== undefined ? vendor.creditDays : 30,
         isActive: vendor.isActive !== undefined ? vendor.isActive : true,
       }
     : null;
@@ -62,7 +60,7 @@ const EditVendorDialog = ({ isOpen, onClose, onSubmit, isLoading, vendor }) => {
             Edit Vendor
           </h3>
           <p className="text-[11px] text-zinc-400 mt-1 font-semibold leading-normal">
-            Modify supplier profile name, contact person, or active status details.
+            Modify supplier profile name, GST number, address, or active status details.
           </p>
         </div>
 

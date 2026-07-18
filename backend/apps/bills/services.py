@@ -2,7 +2,7 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 from django.http import Http404
-from django.db.models import Q
+from django.db.models import Q, ProtectedError
 from rest_framework.exceptions import ValidationError
 
 from apps.audit.services import AuditService
@@ -168,6 +168,40 @@ class BillService:
             )
 
         return bill
+
+    @staticmethod
+    @transaction.atomic
+    def delete_bill(user, bill_id):
+        """
+        Attempts deletion of a bill record. Catches ProtectedError if
+        associated workflow histories prevent deletion.
+        """
+        try:
+            bill = Bill.objects.select_for_update().get(pk=bill_id)
+        except Bill.DoesNotExist:
+            raise Http404("Bill not found.")
+
+        bill_repr = str(bill)
+
+        try:
+            bill.delete()
+        except ProtectedError:
+            raise ValidationError(
+                {"detail": "Cannot delete bill. Historical workflow steps are referenced under this bill."}
+            )
+
+        # Audit delete activity
+        from django.contrib.contenttypes.models import ContentType
+        from apps.audit.models import ActivityLog
+
+        content_type = ContentType.objects.get_for_model(Bill)
+        ActivityLog.objects.create(
+            user=user,
+            action="DELETE",
+            content_type=content_type,
+            object_id=str(bill_id),
+            object_repr=bill_repr,
+        )
 
     @staticmethod
     def get_bill(bill_id):

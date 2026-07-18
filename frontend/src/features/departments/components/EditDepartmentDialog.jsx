@@ -5,7 +5,7 @@ import DepartmentForm from "./DepartmentForm";
 /**
  * Modal dialog to update details of an existing department. Supports keyboard close gestures and screen-reader tags.
  */
-const EditDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, department }) => {
+const EditDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, department, error }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -24,8 +24,6 @@ const EditDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, department
     ? {
         name: department.name,
         code: department.code,
-        managerId: department.managerId || "mgr-1",
-        description: department.description || "",
         isActive: department.is_active !== undefined ? department.is_active : !!department.isActive,
       }
     : null;
@@ -48,7 +46,7 @@ const EditDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, department
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-zinc-450 hover:bg-zinc-100 hover:text-zinc-800 p-1.5 rounded-lg transition-all cursor-pointer"
+          className="absolute right-4 top-4 text-zinc-455 hover:bg-zinc-100 hover:text-zinc-800 p-1.5 rounded-lg transition-all cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="size-4" />
@@ -59,15 +57,22 @@ const EditDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, department
             Edit Department
           </h3>
           <p className="text-[11px] text-zinc-400 mt-1 font-semibold leading-normal">
-            Modify department name, code, manager, or status configurations.
+            Modify department name, code, or status configurations.
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-2.5 bg-red-50 border border-red-100 rounded-lg text-[10px] text-red-600 font-semibold text-left leading-normal">
+            {error}
+          </div>
+        )}
 
         <DepartmentForm
           defaultValues={defaultValues}
           onSubmit={onSubmit}
           isLoading={isLoading}
           buttonText="Save Changes"
+          isEdit={true}
         />
       </div>
     </div>

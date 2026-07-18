@@ -13,7 +13,6 @@ const DepartmentTable = ({ departments, onEdit, onDelete }) => {
             <tr className="bg-zinc-50 border-b border-zinc-200/80 text-zinc-400 text-[10px] font-bold tracking-wider uppercase">
               <th className="p-4 w-1/3">Department Name</th>
               <th className="p-4">Code</th>
-              <th className="p-4">Manager</th>
               <th className="p-4">Status</th>
               <th className="p-4">Created Date</th>
               <th className="p-4 text-right">Actions</th>

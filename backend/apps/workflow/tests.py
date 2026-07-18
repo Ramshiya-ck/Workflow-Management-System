@@ -37,7 +37,7 @@ class WorkflowSystemTests(APITestCase):
             email="manager@aak.com",
             password="securepassword123",
             first_name="Manager",
-            role=UserRole.DEPARTMENT_MANAGER,
+            role=UserRole.MANAGER,
         )
         self.accounts = User.objects.create_user(
             email="accounts@aak.com",

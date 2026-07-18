@@ -89,12 +89,28 @@ class DashboardService:
             for item in reversed(list(trends))
         ]
 
+        # Recent Workflow Activities
+        recent_qs = WorkflowHistory.objects.select_related("bill", "performed_by").order_by("-created_at")[:10]
+        recent_activities = [
+            {
+                "bill_number": item.bill.bill_number,
+                "user_name": f"{item.performed_by.first_name} {item.performed_by.last_name}".strip() or item.performed_by.email,
+                "from_status": item.from_status or "None",
+                "to_status": item.to_status,
+                "action": item.action,
+                "timestamp": item.created_at.strftime("%d %b %Y, %I:%M %p"),
+                "note": item.comments or "",
+            }
+            for item in recent_qs
+        ]
+
         return {
             "role": UserRole.SUPER_ADMIN,
             "cards": cards,
             "department_wise": department_wise,
             "vendor_wise": vendor_wise,
             "monthly_trends": monthly_trends,
+            "recent_activities": recent_activities,
         }
 
     @staticmethod
@@ -219,7 +235,7 @@ class DashboardService:
         ]
 
         return {
-            "role": UserRole.DEPARTMENT_MANAGER,
+            "role": UserRole.MANAGER,
             "cards": cards,
         }
 

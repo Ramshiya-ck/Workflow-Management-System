@@ -23,7 +23,7 @@ class WorkflowService:
         BillStatus.RECEIVING: UserRole.DATA_ENTRY,
         BillStatus.DATA_ENTRY: UserRole.DATA_ENTRY,
         BillStatus.SUPERVISOR: UserRole.SUPERVISOR,
-        BillStatus.DEPARTMENT_MANAGER: UserRole.DEPARTMENT_MANAGER,
+        BillStatus.DEPARTMENT_MANAGER: UserRole.MANAGER,
         BillStatus.ACCOUNTS: UserRole.ACCOUNTS,
     }
 
@@ -42,6 +42,7 @@ class WorkflowService:
         BillStatus.DEPARTMENT_MANAGER: BillStatus.SUPERVISOR,
         BillStatus.SUPERVISOR: BillStatus.DATA_ENTRY,
         BillStatus.DATA_ENTRY: BillStatus.RECEIVING,
+        BillStatus.RECEIVING: BillStatus.RECEIVING,
     }
 
     @staticmethod
@@ -141,7 +142,7 @@ class WorkflowService:
         except Bill.DoesNotExist:
             raise ValidationError({"bill_id": ["Bill not found."]})
 
-        if bill.current_status in [BillStatus.RECEIVING, BillStatus.ACCOUNTS_CLEARED]:
+        if bill.current_status in [BillStatus.ACCOUNTS_CLEARED]:
             raise ValidationError({"status": [f"Rejection not possible from status: {bill.current_status}."]})
 
         WorkflowService.validate_action_permission(user, bill)
@@ -186,17 +187,26 @@ class WorkflowService:
         )
 
         # Notify users in the rejected stage
-        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
-        if next_role:
-            next_users = User.objects.filter(role=next_role, is_active=True)
-            for next_user in next_users:
-                NotificationService.create_notification(
-                    recipient=next_user,
-                    title="Bill Rejected",
-                    message=f"Bill {bill.bill_number} has been rejected back to your stage. Reason: {rejection_reason}",
-                    notification_type="REJECTED",
-                    bill=bill,
-                )
+        if from_status == BillStatus.RECEIVING:
+            NotificationService.create_notification(
+                recipient=bill.created_by,
+                title="Bill Rejected",
+                message=f"Your registered bill {bill.bill_number} has been rejected. Reason: {rejection_reason}",
+                notification_type="REJECTED",
+                bill=bill,
+            )
+        else:
+            next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
+            if next_role:
+                next_users = User.objects.filter(role=next_role, is_active=True)
+                for next_user in next_users:
+                    NotificationService.create_notification(
+                        recipient=next_user,
+                        title="Bill Rejected",
+                        message=f"Bill {bill.bill_number} has been rejected back to your stage. Reason: {rejection_reason}",
+                        notification_type="REJECTED",
+                        bill=bill,
+                    )
 
         return bill
 
@@ -354,7 +364,7 @@ class WorkflowService:
                 Q(current_status=BillStatus.SUPERVISOR) |
                 Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.SUPERVISOR)
             )
-        elif user.role == UserRole.DEPARTMENT_MANAGER:
+        elif user.role == UserRole.MANAGER:
             return base_queryset.filter(
                 Q(current_status=BillStatus.DEPARTMENT_MANAGER) |
                 Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.DEPARTMENT_MANAGER)

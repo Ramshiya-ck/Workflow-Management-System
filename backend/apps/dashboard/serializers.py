@@ -43,6 +43,16 @@ class DashboardDistributionSerializer(serializers.Serializer):
     )
 
 
+class DashboardActivitySerializer(serializers.Serializer):
+    billNumber = serializers.CharField(source="bill_number")
+    userName = serializers.CharField(source="user_name")
+    fromStatus = serializers.CharField(source="from_status")
+    toStatus = serializers.CharField(source="to_status")
+    action = serializers.CharField()
+    timestamp = serializers.CharField()
+    note = serializers.CharField(required=False, allow_blank=True)
+
+
 class DashboardMetricsSerializer(serializers.Serializer):
     """
     Detailed container representing aggregated dashboard metrics mapped to user role.
@@ -67,4 +77,9 @@ class DashboardMetricsSerializer(serializers.Serializer):
         many=True,
         required=False,
         help_text="Vendor-wise distribution metrics.",
+    )
+    recent_activities = DashboardActivitySerializer(
+        many=True,
+        required=False,
+        help_text="Recent transition activities logged in the system.",
     )

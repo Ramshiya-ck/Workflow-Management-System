@@ -79,12 +79,10 @@ const VendorsPage = () => {
     return rawResults.map((v) => ({
       id: v.id,
       name: v.name,
-      code: v.gst_number ? v.gst_number.substring(2, 7) : `VND-${v.id}`,
-      contactPerson: "Account Manager", // fallback
-      email: "info@vendor.com", // fallback
-      phone: v.mobile_number || "N/A",
+      mobileNumber: v.mobile_number || "N/A",
       address: v.address || "",
       gstNumber: v.gst_number || "",
+      creditDays: v.credit_days !== undefined ? v.credit_days : 0,
       isActive: v.is_active !== undefined ? v.is_active : true,
       createdDate: v.created_at 
         ? new Date(v.created_at).toLocaleDateString("en-GB", {
@@ -113,8 +111,9 @@ const VendorsPage = () => {
       {
         name: data.name,
         address: data.address,
-        phone: data.phone,
+        mobileNumber: data.mobileNumber,
         gstNumber: data.gstNumber,
+        creditDays: data.creditDays,
         isActive: data.isActive,
       },
       {
@@ -133,8 +132,9 @@ const VendorsPage = () => {
         data: {
           name: data.name,
           address: data.address,
-          phone: data.phone,
+          mobileNumber: data.mobileNumber,
           gstNumber: data.gstNumber,
+          creditDays: data.creditDays,
           isActive: data.isActive,
         },
       },
@@ -193,10 +193,8 @@ const VendorsPage = () => {
           <SearchBar value={search} onChange={(val) => { setSearch(val); setPage(1); }} onClear={() => { setSearch(""); setPage(1); }} placeholder="Search vendors..." />
           <FiltersBar
             status={statusFilter}
-            managerId="all"
             sortBy={sortBy}
             onStatusChange={(val) => { setStatusFilter(val); setPage(1); }}
-            onManagerChange={() => {}}
             onSortChange={setSortBy}
             onReset={handleResetFilters}
           />
@@ -337,6 +335,23 @@ const VendorsPage = () => {
         onConfirm={handleDeleteConfirm}
         isLoading={isMutating}
         vendorName={selectedVendor?.name}
+        error={(() => {
+          const error = deleteMutation.error;
+          if (!error) return null;
+          const data = error.response?.data;
+          if (typeof data === "string") return data;
+          if (Array.isArray(data)) return data[0];
+          if (data && typeof data === "object") {
+            if (data.detail) return data.detail;
+            if (data.message) return data.message;
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              return Array.isArray(val) ? val[0] : String(val);
+            }
+          }
+          return error.message || "An unexpected error occurred.";
+        })()}
       />
     </div>
   );

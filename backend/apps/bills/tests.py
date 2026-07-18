@@ -18,7 +18,7 @@ class BillModuleTests(APITestCase):
             email="admin@aak.com", password="securepassword123", first_name="Super"
         )
         self.normal_user = User.objects.create_user(
-            email="user@aak.com", password="securepassword123", first_name="Normal"
+            email="user@aak.com", password="securepassword123", first_name="Normal", role="RECEIVING"
         )
 
         # Create active vendors
@@ -310,3 +310,46 @@ class BillModuleTests(APITestCase):
         # Try POST Create
         response = self.client.post(self.list_create_url, {})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_delete_bill_success(self):
+        self.set_auth_credentials(self.admin_token)
+        bill = Bill.objects.create(
+            bill_number="DEL-101",
+            bill_date="2026-07-15",
+            amount="500.00",
+            vendor=self.vendor_a,
+            department=self.dept_finance,
+            tracking_id="BILL-DEL101",
+            created_by=self.super_admin,
+        )
+        detail_url = reverse("bills-detail", args=[bill.id])
+        response = self.client.delete(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Bill.objects.filter(pk=bill.id).exists())
+
+    def test_delete_bill_protected_error(self):
+        self.set_auth_credentials(self.admin_token)
+        bill = Bill.objects.create(
+            bill_number="DEL-PROT",
+            bill_date="2026-07-15",
+            amount="600.00",
+            vendor=self.vendor_a,
+            department=self.dept_finance,
+            tracking_id="BILL-DELPROT",
+            created_by=self.super_admin,
+        )
+        # Reference in WorkflowHistory
+        from apps.workflow.models import WorkflowHistory
+        from core.choices import BillStatus, WorkflowAction
+        WorkflowHistory.objects.create(
+            bill=bill,
+            from_status=BillStatus.RECEIVING,
+            to_status=BillStatus.SUPERVISOR,
+            action=WorkflowAction.APPROVE,
+            performed_by=self.super_admin,
+        )
+        detail_url = reverse("bills-detail", args=[bill.id])
+        response = self.client.delete(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Bill.objects.filter(pk=bill.id).exists())
+

@@ -79,6 +79,33 @@ class CustomUser(AbstractUser):
         default=UserRole.DATA_ENTRY,
     )
 
+    department = models.ForeignKey(
+        "departments.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
+        help_text="The store department assigned to this user.",
+    )
+
+    created_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_users",
+        help_text="The Super Admin who created this user.",
+    )
+
+    updated_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_users",
+        help_text="The Super Admin who last updated this user.",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -113,3 +140,27 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"{self.email} ({self.role})"
+
+
+class SystemSetting(models.Model):
+    """
+    General configuration model storing system settings and privileges maps in JSON.
+    """
+    key = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Unique configuration lookup key."
+    )
+    value = models.JSONField(
+        default=dict,
+        help_text="Config settings values key-value mapping."
+    )
+
+    class Meta:
+        db_table = "system_settings"
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+
+    def __str__(self):
+        return self.key

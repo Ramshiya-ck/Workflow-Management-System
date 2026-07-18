@@ -2,26 +2,17 @@ import React from "react";
 import { Filter, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const MOCK_MANAGERS = [
-  { id: "mgr-1", name: "Santhosh Kumar" },
-  { id: "mgr-2", name: "Anjali Nair" },
-  { id: "mgr-3", name: "Faisal Rahman" },
-  { id: "mgr-4", name: "Deepa Menon" },
-];
-
 /**
  * Filter group holding drop downs for quick sorting and state filtering.
  */
 const FiltersBar = ({
   status,
-  managerId,
   sortBy,
   onStatusChange,
-  onManagerChange,
   onSortChange,
   onReset,
 }) => {
-  const isFiltered = status !== "all" || managerId !== "all" || sortBy !== "name-asc";
+  const isFiltered = status !== "all" || sortBy !== "name-asc";
 
   return (
     <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 font-sans text-xs select-none">
@@ -40,20 +31,6 @@ const FiltersBar = ({
         <option value="all">All Statuses</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
-      </select>
-
-      {/* Manager Filter */}
-      <select
-        value={managerId}
-        onChange={(e) => onManagerChange(e.target.value)}
-        className="bg-white border border-zinc-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-zinc-950 text-zinc-700 cursor-pointer max-w-xs"
-      >
-        <option value="all">All Managers</option>
-        {MOCK_MANAGERS.map((mgr) => (
-          <option key={mgr.id} value={mgr.id}>
-            {mgr.name}
-          </option>
-        ))}
       </select>
 
       {/* Sort Options */}

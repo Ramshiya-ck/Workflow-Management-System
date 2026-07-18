@@ -22,12 +22,10 @@ const VendorForm = ({ defaultValues, onSubmit, isLoading, buttonText = "Save Ven
     resolver: zodResolver(vendorSchema),
     defaultValues: defaultValues || {
       name: "",
-      code: "",
-      contactPerson: "",
-      email: "",
-      phone: "",
       address: "",
+      mobileNumber: "",
       gstNumber: "",
+      creditDays: 30,
       isActive: true,
     },
   });
@@ -50,32 +48,6 @@ const VendorForm = ({ defaultValues, onSubmit, isLoading, buttonText = "Save Ven
           <FormError message={errors.name?.message} />
         </div>
 
-        {/* Vendor Code */}
-        <div className="space-y-1.5">
-          <Label htmlFor="code">Vendor Code</Label>
-          <Input
-            id="code"
-            placeholder="e.g. RELFRESH"
-            disabled={isLoading}
-            {...register("code")}
-            className={errors.code ? "border-destructive focus-visible:ring-destructive" : ""}
-          />
-          <FormError message={errors.code?.message} />
-        </div>
-
-        {/* Contact Person */}
-        <div className="space-y-1.5">
-          <Label htmlFor="contactPerson">Contact Person</Label>
-          <Input
-            id="contactPerson"
-            placeholder="e.g. Suresh Kumar"
-            disabled={isLoading}
-            {...register("contactPerson")}
-            className={errors.contactPerson ? "border-destructive focus-visible:ring-destructive" : ""}
-          />
-          <FormError message={errors.contactPerson?.message} />
-        </div>
-
         {/* GST Number */}
         <div className="space-y-1.5">
           <Label htmlFor="gstNumber">GST Number</Label>
@@ -89,37 +61,37 @@ const VendorForm = ({ defaultValues, onSubmit, isLoading, buttonText = "Save Ven
           <FormError message={errors.gstNumber?.message} />
         </div>
 
-        {/* Email */}
+        {/* Mobile Number */}
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email Address</Label>
+          <Label htmlFor="mobileNumber">Mobile Number</Label>
           <Input
-            id="email"
-            type="email"
-            placeholder="e.g. info@vendor.com"
+            id="mobileNumber"
+            placeholder="e.g. +919876543210"
             disabled={isLoading}
-            {...register("email")}
-            className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
+            {...register("mobileNumber")}
+            className={errors.mobileNumber ? "border-destructive focus-visible:ring-destructive" : ""}
           />
-          <FormError message={errors.email?.message} />
+          <FormError message={errors.mobileNumber?.message} />
         </div>
 
-        {/* Phone */}
+        {/* Credit Days */}
         <div className="space-y-1.5">
-          <Label htmlFor="phone">Phone Number</Label>
+          <Label htmlFor="creditDays">Credit Days</Label>
           <Input
-            id="phone"
-            placeholder="e.g. +91 9876543210"
+            id="creditDays"
+            type="number"
+            placeholder="e.g. 30"
             disabled={isLoading}
-            {...register("phone")}
-            className={errors.phone ? "border-destructive focus-visible:ring-destructive" : ""}
+            {...register("creditDays")}
+            className={errors.creditDays ? "border-destructive focus-visible:ring-destructive" : ""}
           />
-          <FormError message={errors.phone?.message} />
+          <FormError message={errors.creditDays?.message} />
         </div>
       </div>
 
       {/* Address */}
       <div className="space-y-1.5">
-        <Label htmlFor="address">Address (Optional)</Label>
+        <Label htmlFor="address">Address</Label>
         <textarea
           id="address"
           placeholder="Corporate head office address details..."
@@ -128,6 +100,7 @@ const VendorForm = ({ defaultValues, onSubmit, isLoading, buttonText = "Save Ven
           rows={2}
           className="w-full text-xs bg-white border border-zinc-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-zinc-950 resize-none font-sans"
         />
+        <FormError message={errors.address?.message} />
       </div>
 
       {/* Active Checkbox */}

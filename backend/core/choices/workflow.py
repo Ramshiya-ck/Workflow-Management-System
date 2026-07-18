@@ -3,10 +3,12 @@ from django.db import models
 
 class UserRole(models.TextChoices):
     SUPER_ADMIN = "SUPER_ADMIN", "Super Admin"
+    RECEIVING = "RECEIVING", "Receiving"
     DATA_ENTRY = "DATA_ENTRY", "Data Entry"
     SUPERVISOR = "SUPERVISOR", "Supervisor"
-    DEPARTMENT_MANAGER = "DEPARTMENT_MANAGER", "Department Manager"
+    MANAGER = "MANAGER", "Manager"
     ACCOUNTS = "ACCOUNTS", "Accounts"
+    AUDIT_MANAGER = "AUDIT_MANAGER", "Audit Manager"
 
 
 class BillStatus(models.TextChoices):
@@ -39,5 +41,10 @@ class WorkflowHoldReason(models.TextChoices):
     PRICE_DISCREPANCY = "Price Discrepancy", "Price Discrepancy"
     QUANTITY_DISCREPANCY = "Quantity Discrepancy", "Quantity Discrepancy"
     TAX_DISCREPANCY = "Tax Discrepancy", "Tax Discrepancy"
+    VENDOR_CLARIFICATION_PENDING = "Vendor Clarification Pending", "Vendor Clarification Pending"
+    CREDIT_NOTE_PENDING = "Credit Note Pending", "Credit Note Pending"
+    PRICE_VERIFICATION_PENDING = "Price Verification Pending", "Price Verification Pending"
+    GST_VERIFICATION_PENDING = "GST Verification Pending", "GST Verification Pending"
+    AWAITING_MANAGEMENT_DECISION = "Awaiting Management Decision", "Awaiting Management Decision"
     OTHER = "Other", "Other"
 

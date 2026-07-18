@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Building2, User, Phone, MapPin, Receipt, Mail, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Building2, User, Phone, MapPin, Receipt, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import VendorInfoCard from "../components/VendorInfoCard";
@@ -27,12 +27,10 @@ const VendorDetailsPage = () => {
     return {
       id: vendor.id,
       name: vendor.name,
-      code: vendor.gst_number ? vendor.gst_number.substring(2, 7) : `VND-${vendor.id}`,
-      contactPerson: "Account Manager", // fallback
-      email: "info@vendor.com", // fallback
-      phone: vendor.mobile_number || "N/A",
+      mobileNumber: vendor.mobile_number || "N/A",
       address: vendor.address || "N/A",
       gstNumber: vendor.gst_number || "",
+      creditDays: vendor.credit_days !== undefined ? vendor.credit_days : 0,
       isActive: vendor.is_active !== undefined ? vendor.is_active : true,
       createdDate: vendor.created_at 
         ? new Date(vendor.created_at).toLocaleDateString("en-GB", {
@@ -122,7 +120,7 @@ const VendorDetailsPage = () => {
       {/* Page Header */}
       <PageHeader
         title={mappedVendor.name}
-        subtitle={`System tracking records for code index: ${mappedVendor.code}`}
+        subtitle={`System tracking records for GST Number: ${mappedVendor.gstNumber}`}
         breadcrumbs={breadcrumbs}
         primaryAction={
           <Link to="/vendors">
@@ -140,10 +138,6 @@ const VendorDetailsPage = () => {
           {/* Card 1: Vendor details */}
           <VendorInfoCard title="Vendor Profile" icon={Building2}>
             <div className="space-y-2.5">
-              <div className="flex justify-between">
-                <span className="text-zinc-450 font-semibold">Vendor Code:</span>
-                <span className="font-mono font-bold text-zinc-900">{mappedVendor.code}</span>
-              </div>
               <div className="flex justify-between items-center">
                 <span className="text-zinc-455 font-semibold">Active Status:</span>
                 <span
@@ -162,6 +156,10 @@ const VendorDetailsPage = () => {
                 <span className="font-mono font-bold text-zinc-800">{mappedVendor.gstNumber || "N/A"}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-zinc-450 font-semibold">Credit Days:</span>
+                <span className="font-bold text-zinc-900">{mappedVendor.creditDays} Days</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-zinc-450 font-semibold">Registration Date:</span>
                 <span className="text-zinc-700 font-semibold">{mappedVendor.createdDate}</span>
               </div>
@@ -169,27 +167,13 @@ const VendorDetailsPage = () => {
           </VendorInfoCard>
 
           {/* Card 2: Contact info */}
-          <VendorInfoCard title="Contact Registry" icon={User}>
+          <VendorInfoCard title="Contact Info" icon={User}>
             <div className="space-y-3">
-              <div className="flex items-start gap-2.5">
-                <Sparkles className="size-4 text-zinc-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">Contact Name</span>
-                  <span className="font-bold text-zinc-800 block">{mappedVendor.contactPerson || "N/A"}</span>
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Mail className="size-4 text-zinc-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">Email Address</span>
-                  <span className="font-semibold text-zinc-700 block truncate max-w-[180px]">{mappedVendor.email}</span>
-                </div>
-              </div>
               <div className="flex items-start gap-2.5">
                 <Phone className="size-4 text-zinc-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">Phone Number</span>
-                  <span className="font-bold text-zinc-700 block font-mono">{mappedVendor.phone || "N/A"}</span>
+                  <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">Mobile Number</span>
+                  <span className="font-bold text-zinc-700 block font-mono">{mappedVendor.mobileNumber}</span>
                 </div>
               </div>
             </div>

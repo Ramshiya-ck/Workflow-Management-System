@@ -5,7 +5,7 @@ import DepartmentForm from "./DepartmentForm";
 /**
  * Modal dialog for registering a new store department. Supports keyboard close gestures and screen-reader tags.
  */
-const CreateDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading }) => {
+const CreateDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading, error }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -38,7 +38,7 @@ const CreateDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading }) => {
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-zinc-450 hover:bg-zinc-100 hover:text-zinc-800 p-1.5 rounded-lg transition-all cursor-pointer"
+          className="absolute right-4 top-4 text-zinc-455 hover:bg-zinc-100 hover:text-zinc-800 p-1.5 rounded-lg transition-all cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="size-4" />
@@ -52,6 +52,12 @@ const CreateDepartmentDialog = ({ isOpen, onClose, onSubmit, isLoading }) => {
             Register a store category or organizational department under hypermarket workflows.
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-2.5 bg-red-50 border border-red-100 rounded-lg text-[10px] text-red-600 font-semibold text-left leading-normal">
+            {error}
+          </div>
+        )}
 
         <DepartmentForm
           onSubmit={onSubmit}

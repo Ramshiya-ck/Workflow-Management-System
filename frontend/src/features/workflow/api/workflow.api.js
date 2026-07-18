@@ -54,3 +54,8 @@ export const resumeWorkflow = async ({ id, comments }) => {
   const response = await apiClient.post(`/workflow/${id}/resume/`, { comments });
   return response.data;
 };
+
+export const getWorkflowLogs = async (params = {}) => {
+  const response = await apiClient.get("/workflow/logs/", { params });
+  return response.data;
+};

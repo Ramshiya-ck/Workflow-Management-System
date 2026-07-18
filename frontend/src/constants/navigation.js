@@ -4,6 +4,7 @@ import {
   Users,
   Receipt,
   GitPullRequest,
+  History,
   BarChart3,
   Bell,
   Settings
@@ -17,7 +18,7 @@ export const NAVIGATION_ITEMS = [
     name: "Dashboard",
     path: "/",
     icon: LayoutDashboard,
-    roles: ["SUPER_ADMIN", "DATA_ENTRY", "SUPERVISOR", "DEPARTMENT_MANAGER", "ACCOUNTS"],
+    roles: ["SUPER_ADMIN", "RECEIVING", "DATA_ENTRY", "SUPERVISOR", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
   },
   {
     name: "Departments",
@@ -32,28 +33,40 @@ export const NAVIGATION_ITEMS = [
     roles: ["SUPER_ADMIN"],
   },
   {
+    name: "Users",
+    path: "/users",
+    icon: Users,
+    roles: ["SUPER_ADMIN"],
+  },
+  {
     name: "Bills",
     path: "/bills",
     icon: Receipt,
-    roles: ["SUPER_ADMIN", "DATA_ENTRY", "SUPERVISOR", "DEPARTMENT_MANAGER", "ACCOUNTS"],
+    roles: ["SUPER_ADMIN", "RECEIVING", "DATA_ENTRY", "SUPERVISOR", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
   },
   {
     name: "Workflow",
     path: "/workflow",
     icon: GitPullRequest,
-    roles: ["SUPER_ADMIN", "DATA_ENTRY", "SUPERVISOR", "DEPARTMENT_MANAGER", "ACCOUNTS"],
+    roles: ["SUPER_ADMIN", "RECEIVING", "DATA_ENTRY", "SUPERVISOR", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
+  },
+  {
+    name: "Logs",
+    path: "/logs",
+    icon: History,
+    roles: ["SUPER_ADMIN", "AUDIT_MANAGER"],
   },
   {
     name: "Reports",
     path: "/reports",
     icon: BarChart3,
-    roles: ["SUPER_ADMIN", "DEPARTMENT_MANAGER", "ACCOUNTS"],
+    roles: ["SUPER_ADMIN", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
   },
   {
     name: "Notifications",
     path: "/notifications",
     icon: Bell,
-    roles: ["SUPER_ADMIN", "DATA_ENTRY", "SUPERVISOR", "DEPARTMENT_MANAGER", "ACCOUNTS"],
+    roles: ["SUPER_ADMIN", "RECEIVING", "DATA_ENTRY", "SUPERVISOR", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
   },
   {
     name: "Settings",

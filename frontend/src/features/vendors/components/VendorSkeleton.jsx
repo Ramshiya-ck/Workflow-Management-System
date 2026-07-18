@@ -33,22 +33,20 @@ const VendorSkeleton = ({ view = "table" }) => {
       <div className="p-4 border-b border-zinc-100 bg-zinc-50 flex gap-4">
         <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-4 w-1/12" />
-        <Skeleton className="h-4 w-1/6" />
-        <Skeleton className="h-4 w-1/6" />
+        <Skeleton className="h-4 w-1/12" />
+        <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-4 w-1/12" />
         <Skeleton className="h-4 w-1/12" />
-        <Skeleton className="h-4 w-1/6" />
       </div>
       <div className="divide-y divide-zinc-100 p-4 space-y-4">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-center gap-4 py-2">
             <Skeleton className="h-5 w-1/4" />
             <Skeleton className="h-4 w-1/12" />
-            <Skeleton className="h-4 w-1/6" />
-            <Skeleton className="h-4 w-1/6" />
+            <Skeleton className="h-4 w-1/12" />
+            <Skeleton className="h-4 w-1/4" />
             <Skeleton className="h-4 w-1/12" />
             <Skeleton className="h-4 w-1/12" />
-            <Skeleton className="h-4 w-1/6" />
             <Skeleton className="h-6 w-12 ml-auto" />
           </div>
         ))}
