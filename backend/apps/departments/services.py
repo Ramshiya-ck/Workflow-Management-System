@@ -205,8 +205,8 @@ class DepartmentService:
         """
         queryset = Department.objects.select_related("created_by", "updated_by").all()
 
-        # Enforce role-based access: non-SuperAdmins only see active departments
-        if not (user.is_superuser or user.role == "SUPER_ADMIN"):
+        # Enforce role-based access: non-SuperAdmins & non-Receivers only see active departments
+        if not (user.is_superuser or user.role in ["SUPER_ADMIN", "RECEIVING"]):
             queryset = queryset.filter(is_active=True)
 
         if filters:

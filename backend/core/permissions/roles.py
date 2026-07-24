@@ -38,6 +38,15 @@ class CanManageVendors(BasePermission):
         )
 
 
+class CanManageDepartments(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and (request.user.role in ["SUPER_ADMIN", "RECEIVING"] or request.user.is_superuser)
+        )
+
+
 class IsDataEntry(BasePermission):
     def has_permission(self, request, view):
         return (
