@@ -215,7 +215,11 @@ const DashboardPage = () => {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <ChartCard title="Bill Clearances Trend" subtitle="Monthly clearance and volume graphs" />
+            <ChartCard
+              title="Bill Clearances Trend"
+              subtitle="Monthly clearance and volume graphs"
+              trends={metrics?.monthly_trends}
+            />
             {pipelineDistribution.length > 0 && <WorkflowStatusCard distribution={pipelineDistribution} />}
           </div>
         </div>

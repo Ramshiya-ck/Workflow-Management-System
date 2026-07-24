@@ -2,7 +2,7 @@ from rest_framework import status, views, permissions
 from rest_framework.response import Response
 from django.http import Http404
 
-from core.permissions.roles import IsSuperAdmin, CanManageDepartments
+from core.permissions.roles import IsSuperAdmin
 from .serializers import DepartmentSerializer, DepartmentSummarySerializer
 from .services import DepartmentService
 from rest_framework.pagination import PageNumberPagination
@@ -17,7 +17,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 class DepartmentListCreateView(views.APIView):
     def get_permissions(self):
         if self.request.method == "POST":
-            return [CanManageDepartments()]
+            return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
     def get(self, request):
@@ -28,8 +28,8 @@ class DepartmentListCreateView(views.APIView):
         filters = {}
         is_active_param = request.query_params.get("is_active")
         if is_active_param is not None:
-            # Only allow filtering by is_active if user is Super Admin or Receiving role
-            if request.user.is_superuser or request.user.role in ["SUPER_ADMIN", "RECEIVING"]:
+            # Only allow filtering by is_active if user is Super Admin
+            if request.user.is_superuser or request.user.role == "SUPER_ADMIN":
                 filters["is_active"] = is_active_param.lower() == "true"
 
         queryset = DepartmentService.list_departments(
@@ -88,7 +88,7 @@ class DepartmentListCreateView(views.APIView):
 class DepartmentDetailView(views.APIView):
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
-            return [CanManageDepartments()]
+            return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
     def get(self, request, pk):
@@ -127,7 +127,7 @@ class DepartmentDetailView(views.APIView):
 
 
 class DepartmentActivateView(views.APIView):
-    permission_classes = [CanManageDepartments]
+    permission_classes = [IsSuperAdmin]
 
     def post(self, request, pk):
         department = DepartmentService.activate_department(user=request.user, department_id=pk)
@@ -141,7 +141,7 @@ class DepartmentActivateView(views.APIView):
 
 
 class DepartmentDeactivateView(views.APIView):
-    permission_classes = [CanManageDepartments]
+    permission_classes = [IsSuperAdmin]
 
     def post(self, request, pk):
         department = DepartmentService.deactivate_department(user=request.user, department_id=pk)

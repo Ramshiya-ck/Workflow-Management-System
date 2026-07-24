@@ -24,7 +24,7 @@ export const NAVIGATION_ITEMS = [
     name: "Departments",
     path: "/departments",
     icon: Building2,
-    roles: ["SUPER_ADMIN", "RECEIVING"],
+    roles: ["SUPER_ADMIN"],
   },
   {
     name: "Vendors",

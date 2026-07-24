@@ -21,7 +21,7 @@ const RecentActivityCard = ({ activities = [] }) => {
       {activities.length === 0 ? (
         <p className="text-xs text-zinc-400 text-center py-6 font-medium">No recent transitions recorded.</p>
       ) : (
-        <div className="relative border-l border-zinc-100 ml-3.5 pl-5 space-y-5 py-1">
+        <div className="max-h-[260px] overflow-y-auto relative border-l border-zinc-100 ml-3.5 pl-5 pr-2 space-y-5 py-1">
           {activities.map((act, index) => {
             const { icon: Icon, color } = getIcon(act.action);
             return (
