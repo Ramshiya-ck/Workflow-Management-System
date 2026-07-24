@@ -38,14 +38,14 @@ const WorkflowStep = ({ label, role, status, isLast }) => {
       <div className="flex flex-col items-center">
         <div className="z-10 relative">{icon()}</div>
         {!isLast && (
-          <div className={`hidden md:block absolute left-2.5 top-2.5 w-[calc(100%-12px)] h-0.5 ${
+          <div className={`hidden md:block absolute left-2.5 top-2.5 w-[calc(100%-12px)] h-0.5 z-0 ${
             status === "completed" ? "bg-emerald-500" : "bg-zinc-200"
           }`} />
         )}
       </div>
 
       {/* Texts details */}
-      <div className="space-y-0.5 select-none pt-0.5">
+      <div className="space-y-0.5 select-none pt-0.5 bg-white z-10 relative pr-2">
         <span className={`text-xs block leading-tight ${textStyle()}`}>{label}</span>
         <span className="text-[10px] text-zinc-400 font-bold block">{role}</span>
       </div>

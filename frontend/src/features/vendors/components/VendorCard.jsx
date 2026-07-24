@@ -68,13 +68,15 @@ const VendorCard = ({ vendor, onEdit, onDelete }) => {
           >
             <Edit2 className="size-3.5" />
           </button>
-          <button
-            onClick={() => onDelete(vendor)}
-            className="p-1.5 rounded-md hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
-            title="Delete"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(vendor)}
+              className="p-1.5 rounded-md hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
+              title="Delete"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -27,6 +27,9 @@ class WorkflowViewSet(viewsets.ViewSet):
         elif self.action in ["reject", "hold"]:
             from core.permissions.roles import HasPrivilege
             return [HasPrivilege("reject_bills")]
+        elif self.action == "logs":
+            from core.permissions.roles import HasRole
+            return [HasRole(["SUPER_ADMIN", "AUDIT_MANAGER"])]
         return [permissions.IsAuthenticated()]
 
     @action(detail=False, methods=["get"], url_path="pending")

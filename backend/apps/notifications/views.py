@@ -15,8 +15,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Users only see notifications belonging to them
-        return Notification.objects.filter(recipient=self.request.user).order_by("-created_at")
+        # Users only see notifications belonging to them (unread first, newest first)
+        return Notification.objects.filter(recipient=self.request.user).order_by("is_read", "-created_at")
 
     @action(detail=True, methods=["post"], url_path="read")
     def read(self, request, pk=None):

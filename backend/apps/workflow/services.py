@@ -20,7 +20,7 @@ class WorkflowService:
 
     # Role permission mappings for each workflow status stage
     STATUS_ROLE_MAP = {
-        BillStatus.RECEIVING: UserRole.DATA_ENTRY,
+        BillStatus.RECEIVING: UserRole.RECEIVING,
         BillStatus.DATA_ENTRY: UserRole.DATA_ENTRY,
         BillStatus.SUPERVISOR: UserRole.SUPERVISOR,
         BillStatus.DEPARTMENT_MANAGER: UserRole.MANAGER,
@@ -85,8 +85,9 @@ class WorkflowService:
             raise ValidationError({"status": [f"No next approval status defined from {from_status}."]})
 
         bill.current_status = to_status
+        bill.rejection_reason = None
         bill.updated_by = user
-        bill.save(update_fields=["current_status", "updated_by", "updated_at"])
+        bill.save(update_fields=["current_status", "rejection_reason", "updated_by", "updated_at"])
 
         # Record workflow timeline history
         WorkflowHistory.objects.create(
@@ -107,26 +108,48 @@ class WorkflowService:
         )
 
         # Dispatch notifications
-        next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
-        if next_role:
-            next_users = User.objects.filter(role=next_role, is_active=True)
+        if from_status == BillStatus.RECEIVING:
+            # Receiving submits bill -> Notify Data Entry user
+            next_users = User.objects.filter(role=UserRole.DATA_ENTRY, is_active=True)
             for next_user in next_users:
                 NotificationService.create_notification(
                     recipient=next_user,
-                    title="Bill Approval Required",
-                    message=f"Bill {bill.bill_number} requires review and approval.",
-                    notification_type="APPROVAL_REQUIRED",
+                    title="Bill Assigned",
+                    message=f"Bill {bill.bill_number} has been submitted by Receiving and assigned to your queue.",
+                    notification_type="ASSIGNED",
+                    bill=bill,
+                )
+        elif to_status == BillStatus.ACCOUNTS_CLEARED:
+            # Accounts clears bill -> Notify creator of the bill and Audit Manager
+            NotificationService.create_notification(
+                recipient=bill.created_by,
+                title="Workflow Completed",
+                message=f"Your registered bill {bill.bill_number} has been fully cleared.",
+                notification_type="WORKFLOW_COMPLETED",
+                bill=bill,
+            )
+            audit_users = User.objects.filter(role__in=["AUDIT_MANAGER", "SUPER_ADMIN"], is_active=True)
+            for audit_user in audit_users:
+                NotificationService.create_notification(
+                    recipient=audit_user,
+                    title="Workflow Completed",
+                    message=f"Bill {bill.bill_number} has been fully cleared and approved.",
+                    notification_type="WORKFLOW_COMPLETED",
                     bill=bill,
                 )
         else:
-            # Reached Accounts Cleared
-            NotificationService.create_notification(
-                recipient=bill.created_by,
-                title="Bill Cleared",
-                message=f"Your registered bill {bill.bill_number} has been cleared.",
-                notification_type="CLEARED",
-                bill=bill,
-            )
+            # Notify next stage responsible users
+            next_role = WorkflowService.STATUS_ROLE_MAP.get(to_status)
+            if next_role:
+                next_users = User.objects.filter(role=next_role, is_active=True)
+                for next_user in next_users:
+                    NotificationService.create_notification(
+                        recipient=next_user,
+                        title="Bill Approval Required",
+                        message=f"Bill {bill.bill_number} requires your review and approval.",
+                        notification_type="APPROVAL_REQUIRED",
+                        bill=bill,
+                    )
 
         return bill
 
@@ -253,6 +276,15 @@ class WorkflowService:
             changes={"current_status": [from_status, to_status]},
         )
 
+        # Notify bill creator that the bill has been put on hold
+        NotificationService.create_notification(
+            recipient=bill.created_by,
+            title="Bill Put On Hold",
+            message=f"Your registered bill {bill.bill_number} has been put on hold.",
+            notification_type="HOLD",
+            bill=bill,
+        )
+
         return bill
 
     @staticmethod
@@ -312,6 +344,19 @@ class WorkflowService:
             changes={"current_status": [BillStatus.HOLDING, target_status]},
         )
 
+        # Notify next stage responsible users that the bill processing has resumed
+        next_role = WorkflowService.STATUS_ROLE_MAP.get(target_status)
+        if next_role:
+            next_users = User.objects.filter(role=next_role, is_active=True)
+            for next_user in next_users:
+                NotificationService.create_notification(
+                    recipient=next_user,
+                    title="Bill Processing Resumed",
+                    message=f"Processing for bill {bill.bill_number} has been resumed. Action required.",
+                    notification_type="RESUMED",
+                    bill=bill,
+                )
+
         return bill
 
     @staticmethod
@@ -354,10 +399,15 @@ class WorkflowService:
             return base_queryset.exclude(current_status=BillStatus.ACCOUNTS_CLEARED)
 
         from django.db.models import Q
-        if user.role == UserRole.DATA_ENTRY:
+        if user.role == UserRole.RECEIVING:
             return base_queryset.filter(
-                Q(current_status__in=[BillStatus.RECEIVING, BillStatus.DATA_ENTRY]) |
-                Q(current_status=BillStatus.HOLDING, held_from_status__in=[BillStatus.RECEIVING, BillStatus.DATA_ENTRY])
+                Q(current_status=BillStatus.RECEIVING) |
+                Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.RECEIVING)
+            )
+        elif user.role == UserRole.DATA_ENTRY:
+            return base_queryset.filter(
+                Q(current_status=BillStatus.DATA_ENTRY) |
+                Q(current_status=BillStatus.HOLDING, held_from_status=BillStatus.DATA_ENTRY)
             )
         elif user.role == UserRole.SUPERVISOR:
             return base_queryset.filter(

@@ -270,6 +270,20 @@ class AuthService:
                 logger.info(f"Password reset OTP for {user.email} is: {otp}")
                 print(f"\n[MOCK EMAIL SEND] Password reset OTP for {user.email} is: {otp}\n")
 
+                # Send real email using SMTP backend
+                from django.core.mail import send_mail
+                try:
+                    reset_link = f"http://localhost:5173/reset-password?email={user.email}&code={otp}"
+                    send_mail(
+                        "AAK Workflow - Password Reset OTP",
+                        f"Hello {user.first_name or 'User'},\n\nYour password reset OTP is: {otp}\n\nYou can reset your password directly by clicking this link:\n{reset_link}\n\nThis OTP is valid for 10 minutes.",
+                        None,
+                        [user.email],
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send password reset OTP email: {e}")
+
         except User.DoesNotExist:
             pass
 

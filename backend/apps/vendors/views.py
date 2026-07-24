@@ -2,7 +2,7 @@ from rest_framework import status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-from core.permissions.roles import IsSuperAdmin
+from core.permissions.roles import IsSuperAdmin, CanManageVendors
 from .serializers import VendorSerializer
 from .services import VendorService
 from rest_framework.pagination import PageNumberPagination
@@ -17,7 +17,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 class VendorViewSet(viewsets.ViewSet):
     """
     ViewSet for managing Vendors.
-    Only Super Admins can write/delete; all authenticated users can view/list.
+    Only Super Admins and Receivers can write/delete; all authenticated users can view/list.
     """
 
     def get_permissions(self):
@@ -29,7 +29,7 @@ class VendorViewSet(viewsets.ViewSet):
             "activate",
             "deactivate",
         ]:
-            return [IsSuperAdmin()]
+            return [CanManageVendors()]
         return [permissions.IsAuthenticated()]
 
     def list(self, request):

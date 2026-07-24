@@ -29,6 +29,15 @@ class IsSuperAdmin(BasePermission):
         )
 
 
+class CanManageVendors(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and (request.user.role in ["SUPER_ADMIN", "RECEIVING"] or request.user.is_superuser)
+        )
+
+
 class IsDataEntry(BasePermission):
     def has_permission(self, request, view):
         return (
@@ -80,9 +89,9 @@ class HasPrivilege(BasePermission):
         if request.user.is_superuser or request.user.role == "SUPER_ADMIN":
             return True
 
-        # Receiving role is always allowed to create/edit bills and view audit logs
+        # Receiving role is always allowed to create/edit bills, view audit logs, and approve transitions (submitting)
         if request.user.role == "RECEIVING":
-            if self.privilege_key in ["create_bills", "view_audit"]:
+            if self.privilege_key in ["create_bills", "view_audit", "approve_transition"]:
                 return True
 
         # Look up settings

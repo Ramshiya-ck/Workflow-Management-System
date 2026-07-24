@@ -2,12 +2,12 @@ import React from "react";
 import WorkflowStep from "./WorkflowStep";
 
 const FLOW_STEPS = [
-  { key: "RECEIVING", label: "Receiving Queue", role: "Receiving Officer" },
-  { key: "DATA_ENTRY", label: "Data Entry Verification", role: "Data Entry Operator" },
-  { key: "SUPERVISOR", label: "Supervisor Clearance", role: "Supervisor" },
-  { key: "DEPARTMENT_MANAGER", label: "Manager Approval", role: "Manager" },
-  { key: "ACCOUNTS", label: "Accounts Clearance", role: "Finance Officer" },
-  { key: "ACCOUNTS_CLEARED", label: "Approved", role: "Workflow Closed" }
+  { key: "RECEIVING", label: "Draft", role: "Receiving Officer" },
+  { key: "DATA_ENTRY", label: "Received", role: "Data Entry Operator" },
+  { key: "SUPERVISOR", label: "Data Entry Done", role: "Supervisor" },
+  { key: "DEPARTMENT_MANAGER", label: "Supervisor Approved", role: "Manager" },
+  { key: "ACCOUNTS", label: "Manager Approved", role: "Finance Officer" },
+  { key: "ACCOUNTS_CLEARED", label: "Accounts Cleared", role: "Workflow Closed" }
 ];
 
 /**

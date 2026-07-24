@@ -27,24 +27,27 @@ const ActionButtons = ({ currentStatus, onApprove, onReject, onHold, onResume, d
       ) : (
         <>
           {/* Approve */}
+          {/* Approve / Submit */}
           <Button
             onClick={onApprove}
             disabled={disabled}
             className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white border-none text-xs font-bold gap-1.5 h-9 px-4 rounded-lg shadow-sm"
           >
             <Check className="size-3.5" />
-            <span>Approve</span>
+            <span>{currentStatus === "RECEIVING" ? "Submit" : "Approve"}</span>
           </Button>
 
           {/* Reject */}
-          <Button
-            onClick={onReject}
-            disabled={disabled}
-            className="cursor-pointer bg-red-600 hover:bg-red-700 text-white border-none text-xs font-bold gap-1.5 h-9 px-4 rounded-lg shadow-sm"
-          >
-            <AlertCircle className="size-3.5" />
-            <span>Reject</span>
-          </Button>
+          {currentStatus !== "RECEIVING" && (
+            <Button
+              onClick={onReject}
+              disabled={disabled}
+              className="cursor-pointer bg-red-600 hover:bg-red-700 text-white border-none text-xs font-bold gap-1.5 h-9 px-4 rounded-lg shadow-sm"
+            >
+              <AlertCircle className="size-3.5" />
+              <span>Reject</span>
+            </Button>
+          )}
 
           {/* Hold */}
           <Button

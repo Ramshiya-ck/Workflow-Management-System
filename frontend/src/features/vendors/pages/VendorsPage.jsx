@@ -16,6 +16,7 @@ import { useVendors } from "../hooks/useVendors";
 import { useCreateVendor } from "../hooks/useCreateVendor";
 import { useUpdateVendor } from "../hooks/useUpdateVendor";
 import { useDeleteVendor } from "../hooks/useDeleteVendor";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 // Ordering Parameter Map
 const ORDERING_MAP = {
@@ -30,12 +31,15 @@ const ORDERING_MAP = {
  * Primary presentation panel displaying supplier cards list with searches and pagination boundaries.
  */
 const VendorsPage = () => {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name-asc");
   const [viewMode, setViewMode] = useState("table");
   const [page, setPage] = useState(1);
+
+  const canDelete = user?.role === "SUPER_ADMIN" || user?.is_superuser;
 
   // Debounce search input changes
   useEffect(() => {
@@ -247,7 +251,7 @@ const VendorsPage = () => {
                     key={vendor.id}
                     vendor={vendor}
                     onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
+                    onDelete={canDelete ? handleDeleteClick : undefined}
                   />
                 ))}
               </div>
@@ -255,7 +259,7 @@ const VendorsPage = () => {
               <VendorTable
                 vendors={mappedVendors}
                 onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
+                onDelete={canDelete ? handleDeleteClick : undefined}
               />
             )}
 

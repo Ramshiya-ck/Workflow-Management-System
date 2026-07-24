@@ -4,6 +4,8 @@ import { Menu, X, ChevronLeft, ChevronRight, User, LogOut, Bell, Search } from "
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { NAVIGATION_ITEMS } from "@/constants/navigation";
+import NotificationDropdown from "@/features/notifications/components/NotificationDropdown";
+import { useUnreadNotificationCount } from "@/features/notifications/hooks/useUnreadNotificationCount";
 
 /**
  * Main application frame layout rendered for authenticated sessions.
@@ -15,7 +17,11 @@ const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const { data: countRes } = useUnreadNotificationCount();
+  const unreadCount = countRes?.data?.count || 0;
 
   const { mutate: performLogout } = useLogout(() => {
     navigate("/login", { replace: true });
@@ -190,11 +196,27 @@ const DashboardLayout = () => {
               />
             </div>
 
-            {/* Notification Placeholder Bell */}
-            <button className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 rounded-lg relative cursor-pointer">
-              <Bell className="size-4.5" />
-              <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-red-500 ring-2 ring-white" />
-            </button>
+            {/* Notification Bell Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationOpen((prev) => !prev)}
+                className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 rounded-lg relative cursor-pointer"
+                aria-label="Open notifications dropdown"
+                aria-haspopup="true"
+                aria-expanded={isNotificationOpen}
+              >
+                <Bell className="size-4.5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white font-bold text-[8px] h-3.5 min-w-[14px] px-1 flex items-center justify-center rounded-full ring-2 ring-white select-none">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationDropdown
+                isOpen={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+              />
+            </div>
 
             {/* User Dropdown */}
             <div className="relative" ref={dropdownRef}>

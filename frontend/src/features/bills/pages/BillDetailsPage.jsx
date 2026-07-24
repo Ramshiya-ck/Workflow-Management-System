@@ -7,15 +7,15 @@ import BillInfoCard from "../components/BillInfoCard";
 import StatusBadge from "../components/StatusBadge";
 import TrackingBadge from "../components/TrackingBadge";
 import Skeleton from "@/components/common/Skeleton";
-
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useBill } from "../hooks/useBill";
 
 const STEPS_FLOW = [
-  { key: "RECEIVING", label: "Receiving Queue", role: "Receiving Officer" },
-  { key: "DATA_ENTRY", label: "Data Entry Verification", role: "Data Entry Operator" },
-  { key: "SUPERVISOR", label: "Supervisor Clearance", role: "Supervisor" },
-  { key: "DEPARTMENT_MANAGER", label: "Department Manager Approval", role: "Manager" },
-  { key: "ACCOUNTS", label: "Finance & Accounts Payout", role: "Finance Officer" },
+  { key: "RECEIVING", label: "Draft", role: "Receiving Officer" },
+  { key: "DATA_ENTRY", label: "Received", role: "Data Entry Operator" },
+  { key: "SUPERVISOR", label: "Data Entry Done", role: "Supervisor" },
+  { key: "DEPARTMENT_MANAGER", label: "Supervisor Approved", role: "Manager" },
+  { key: "ACCOUNTS", label: "Manager Approved", role: "Finance Officer" },
 ];
 
 /**
@@ -23,6 +23,7 @@ const STEPS_FLOW = [
  */
 const BillDetailsPage = () => {
   const { id } = useParams();
+  const { user } = useAuth();
 
   // Query dynamic details
   const { data: billResponse, isLoading: isBillLoading, error: billError } = useBill(id);
@@ -141,6 +142,21 @@ const BillDetailsPage = () => {
         }
       />
 
+      {/* Rejection Alert Banner if rejection_reason exists */}
+      {bill.rejection_reason && (
+        <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-start gap-3 select-none text-left mb-6">
+          <div className="p-2 bg-rose-100/80 rounded-lg text-rose-600 shrink-0">
+            <AlertTriangle className="size-4" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Invoice Rejected</h4>
+            <p className="text-xs text-rose-700 leading-relaxed font-semibold">
+              This invoice was returned for correction. Rejection Reason: <span className="font-bold font-sans text-rose-950 underline">{bill.rejection_reason}</span>
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Columns: Core Bill parameters */}
         <div className="md:col-span-2 space-y-6">
@@ -202,16 +218,7 @@ const BillDetailsPage = () => {
             </div>
           </BillInfoCard>
 
-          {/* Card 4: Attachments Placeholder */}
-          <BillInfoCard title="Attachments & Invoice Scans" icon={FileText}>
-            <div className="border border-dashed border-zinc-200 rounded-xl p-6 text-center text-zinc-400 font-semibold flex flex-col items-center gap-2">
-              <FileText className="size-8 text-zinc-300 animate-pulse" />
-              <p className="text-xs">No document scan attachments uploaded yet.</p>
-              <Button variant="outline" className="mt-2 text-[10px] h-7 border-zinc-200 font-bold uppercase tracking-wider cursor-pointer">
-                Upload File Scan
-              </Button>
-            </div>
-          </BillInfoCard>
+
         </div>
 
         {/* Right Column: Workflow timeline tracker */}

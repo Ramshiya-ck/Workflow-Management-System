@@ -115,7 +115,7 @@ const WorkflowDetailsPage = () => {
     }
 
     const ROLE_MAP = {
-      RECEIVING: "DATA_ENTRY",
+      RECEIVING: "RECEIVING",
       DATA_ENTRY: "DATA_ENTRY",
       SUPERVISOR: "SUPERVISOR",
       DEPARTMENT_MANAGER: "MANAGER",
@@ -231,6 +231,21 @@ const WorkflowDetailsPage = () => {
         }
       />
 
+      {/* Rejection Alert Banner if rejection_reason exists */}
+      {bill.rejection_reason && (
+        <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-start gap-3 select-none text-left">
+          <div className="p-2 bg-rose-100/80 rounded-lg text-rose-600 shrink-0">
+            <AlertTriangle className="size-4" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Invoice Rejected</h4>
+            <p className="text-xs text-rose-700 leading-relaxed font-semibold">
+              This invoice was returned for correction. Rejection Reason: <span className="font-bold font-sans text-rose-950 underline">{bill.rejection_reason}</span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Holding Alert Banner if status matches */}
       {bill.current_status === "HOLDING" && holdingInfo && (
         <HoldingBanner
@@ -299,14 +314,6 @@ const WorkflowDetailsPage = () => {
             </div>
           </BillInfoCard>
 
-          {/* Card 4: Attachments scan slots */}
-          <BillInfoCard title="Attachments & Invoices scan files" icon={FileText}>
-            <div className="border border-dashed border-zinc-200 rounded-xl p-6 text-center text-zinc-400 font-semibold flex flex-col items-center gap-2">
-              <FileText className="size-8 text-zinc-300" />
-              <p className="text-xs">No scan attachment uploads found.</p>
-            </div>
-          </BillInfoCard>
-
           {/* Card 5: Action buttons (Only show if user role matches active stage) */}
           {canAct && (
             <ActionButtons
@@ -347,10 +354,12 @@ const WorkflowDetailsPage = () => {
         </div>
 
         {/* Full width bottom history log table */}
-        <div className="md:col-span-3 space-y-3">
-          <h3 className="text-sm font-bold text-zinc-900 px-1">Transition Audit Log History</h3>
-          <WorkflowHistory history={mappedHistory} />
-        </div>
+        {(user?.role === "SUPER_ADMIN" || user?.role === "AUDIT_MANAGER" || user?.is_superuser) && (
+          <div className="md:col-span-3 space-y-3">
+            <h3 className="text-sm font-bold text-zinc-900 px-1">Transition Audit Log History</h3>
+            <WorkflowHistory history={mappedHistory} />
+          </div>
+        )}
       </div>
 
       {/* Interaction Dialog overlays */}

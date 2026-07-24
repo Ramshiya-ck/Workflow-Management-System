@@ -64,6 +64,21 @@ class BillService:
             },
         )
 
+        # Notify Data Entry users that a new bill has been registered by Receiving
+        from django.contrib.auth import get_user_model
+        from apps.notifications.services import NotificationService
+        from core.choices import UserRole
+        User = get_user_model()
+        next_users = User.objects.filter(role=UserRole.DATA_ENTRY, is_active=True)
+        for next_user in next_users:
+            NotificationService.create_notification(
+                recipient=next_user,
+                title="New Bill Registered",
+                message=f"A new bill {bill.bill_number} has been registered by Receiving and is pending submission.",
+                notification_type="ASSIGNED",
+                bill=bill,
+            )
+
         return bill
 
     @staticmethod

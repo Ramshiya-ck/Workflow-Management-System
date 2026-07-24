@@ -21,6 +21,12 @@ class WorkflowSystemTests(APITestCase):
         self.super_admin = User.objects.create_superuser(
             email="admin@aak.com", password="securepassword123", first_name="Admin"
         )
+        self.receiving = User.objects.create_user(
+            email="receiving@aak.com",
+            password="securepassword123",
+            first_name="Receiver",
+            role=UserRole.RECEIVING,
+        )
         self.data_entry = User.objects.create_user(
             email="entry@aak.com",
             password="securepassword123",
@@ -68,12 +74,13 @@ class WorkflowSystemTests(APITestCase):
             department=self.department,
             tracking_id="BILL-00000001",
             current_status=BillStatus.RECEIVING,
-            created_by=self.data_entry,
+            created_by=self.receiving,
         )
 
         self.login_url = reverse("auth_login")
 
         # Get JWT tokens
+        self.receiving_token = self.get_jwt_token("receiving@aak.com")
         self.entry_token = self.get_jwt_token("entry@aak.com")
         self.supervisor_token = self.get_jwt_token("supervisor@aak.com")
         self.manager_token = self.get_jwt_token("manager@aak.com")
@@ -88,8 +95,8 @@ class WorkflowSystemTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
     def test_approve_workflow_success(self):
-        # 1. RECEIVING -> DATA_ENTRY (by Data Entry)
-        self.set_auth_credentials(self.entry_token)
+        # 1. RECEIVING -> DATA_ENTRY (by Receiving User)
+        self.set_auth_credentials(self.receiving_token)
         approve_url = reverse("workflow-approve", args=[self.bill.id])
         response = self.client.post(approve_url, {"comments": "Submit to data entry"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -97,6 +104,7 @@ class WorkflowSystemTests(APITestCase):
         self.assertEqual(self.bill.current_status, BillStatus.DATA_ENTRY)
 
         # 2. DATA_ENTRY -> SUPERVISOR (by Data Entry)
+        self.set_auth_credentials(self.entry_token)
         response = self.client.post(approve_url, {"comments": "Submit to supervisor"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.bill.refresh_from_db()
@@ -271,8 +279,8 @@ class WorkflowSystemTests(APITestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["id"], bill_supervisor.id)
 
-        # 2. Login as Data Entry -> should see self.bill (in RECEIVING status)
-        self.set_auth_credentials(self.entry_token)
+        # 2. Login as Receiving -> should see self.bill (in RECEIVING status)
+        self.set_auth_credentials(self.receiving_token)
         response = self.client.get(pending_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data["data"]["results"]
@@ -296,6 +304,8 @@ class WorkflowSystemTests(APITestCase):
             self.assertEqual(bill_locked.current_status, BillStatus.SUPERVISOR)
 
     def test_hold_bill_success(self):
+        self.bill.current_status = BillStatus.DATA_ENTRY
+        self.bill.save()
         self.set_auth_credentials(self.entry_token)
         hold_url = reverse("workflow-hold", args=[self.bill.id])
         payload = {
@@ -314,6 +324,8 @@ class WorkflowSystemTests(APITestCase):
         self.assertEqual(history[0].comments, "Holding for price validation")
 
     def test_hold_bill_validation_error(self):
+        self.bill.current_status = BillStatus.DATA_ENTRY
+        self.bill.save()
         self.set_auth_credentials(self.entry_token)
         hold_url = reverse("workflow-hold", args=[self.bill.id])
         # Missing reason_code
@@ -322,7 +334,7 @@ class WorkflowSystemTests(APITestCase):
 
     def test_resume_bill_success(self):
         # Setup: Put bill on hold from RECEIVING
-        self.set_auth_credentials(self.entry_token)
+        self.set_auth_credentials(self.receiving_token)
         hold_url = reverse("workflow-hold", args=[self.bill.id])
         self.client.post(hold_url, {
             "reason_code": WorkflowHoldReason.TAX_DISCREPANCY,
@@ -344,9 +356,10 @@ class WorkflowSystemTests(APITestCase):
 
     def test_resume_bill_permission_denied(self):
         # Setup: transition to SUPERVISOR status
-        self.set_auth_credentials(self.entry_token)
+        self.set_auth_credentials(self.receiving_token)
         approve_url = reverse("workflow-approve", args=[self.bill.id])
         self.client.post(approve_url) # RECEIVING -> DATA_ENTRY
+        self.set_auth_credentials(self.entry_token)
         self.client.post(approve_url) # DATA_ENTRY -> SUPERVISOR
         self.bill.refresh_from_db()
         self.assertEqual(self.bill.current_status, BillStatus.SUPERVISOR)

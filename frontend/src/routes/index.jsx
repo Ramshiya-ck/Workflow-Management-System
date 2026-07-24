@@ -26,12 +26,24 @@ const EditBillPage = lazy(() => import("@/features/bills/pages/EditBillPage"));
 const WorkflowQueuePage = lazy(() => import("@/features/workflow/pages/WorkflowQueuePage"));
 const WorkflowDetailsPage = lazy(() => import("@/features/workflow/pages/WorkflowDetailsPage"));
 const WorkflowLogsPage = lazy(() => import("@/features/workflow/pages/WorkflowLogsPage"));
+const NotificationsPage = lazy(() => import("@/features/notifications/pages/NotificationsPage"));
+
+// Lazy loaded Reports Page
+const ReportsPage = lazy(() => import("@/features/reports/pages/ReportsPage"));
 
 // Lazy loaded Users Pages
 const UserListPage = lazy(() => import("@/features/users/pages/UserListPage"));
 const CreateUserPage = lazy(() => import("@/features/users/pages/CreateUserPage"));
 const EditUserPage = lazy(() => import("@/features/users/pages/EditUserPage"));
 const UserDetailsPage = lazy(() => import("@/features/users/pages/UserDetailsPage"));
+
+const ReportAccessRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user && user.role !== "SUPER_ADMIN" && user.role !== "AUDIT_MANAGER" && !user.is_superuser) {
+    return <Navigate to="/access-denied" replace />;
+  }
+  return children;
+};
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -162,20 +174,14 @@ export const AppRoutes = () => {
           <Route
             path="reports"
             element={
-              <div className="p-6 bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-                <h2 className="text-lg font-bold text-zinc-900 font-sans">System Reports</h2>
-                <p className="text-xs text-zinc-500 font-sans mt-1">Generate clearance metrics sheets.</p>
-              </div>
+              <ReportAccessRoute>
+                <ReportsPage />
+              </ReportAccessRoute>
             }
           />
           <Route
             path="notifications"
-            element={
-              <div className="p-6 bg-white rounded-xl border border-zinc-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
-                <h2 className="text-lg font-bold text-zinc-900 font-sans">Notifications Center</h2>
-                <p className="text-xs text-zinc-500 font-sans mt-1">System warning messages logs database.</p>
-              </div>
-            }
+            element={<NotificationsPage />}
           />
           <Route
             path="settings"

@@ -2,32 +2,32 @@ import React from "react";
 
 const STATUS_CONFIGS = {
   RECEIVING: {
-    label: "Receiving",
+    label: "Draft",
     bg: "bg-blue-50 border-blue-150 text-blue-700",
     dot: "bg-blue-500",
   },
   DATA_ENTRY: {
-    label: "Data Entry",
+    label: "Received",
     bg: "bg-purple-50 border-purple-150 text-purple-700",
     dot: "bg-purple-500",
   },
   SUPERVISOR: {
-    label: "Supervisor Approval",
+    label: "Data Entry Done",
     bg: "bg-indigo-50 border-indigo-150 text-indigo-700",
     dot: "bg-indigo-500",
   },
   DEPARTMENT_MANAGER: {
-    label: "Manager Approval",
+    label: "Supervisor Approved",
     bg: "bg-pink-50 border-pink-150 text-pink-700",
     dot: "bg-pink-500",
   },
   ACCOUNTS: {
-    label: "Accounts Clearance",
+    label: "Manager Approved",
     bg: "bg-amber-50 border-amber-150 text-amber-700",
     dot: "bg-amber-500",
   },
   ACCOUNTS_CLEARED: {
-    label: "Approved",
+    label: "Accounts Cleared",
     bg: "bg-emerald-50 border-emerald-150 text-emerald-700",
     dot: "bg-emerald-500",
   },

@@ -30,7 +30,7 @@ export const NAVIGATION_ITEMS = [
     name: "Vendors",
     path: "/vendors",
     icon: Users,
-    roles: ["SUPER_ADMIN"],
+    roles: ["SUPER_ADMIN", "RECEIVING"],
   },
   {
     name: "Users",
@@ -60,7 +60,7 @@ export const NAVIGATION_ITEMS = [
     name: "Reports",
     path: "/reports",
     icon: BarChart3,
-    roles: ["SUPER_ADMIN", "MANAGER", "ACCOUNTS", "AUDIT_MANAGER"],
+    roles: ["SUPER_ADMIN", "AUDIT_MANAGER"],
   },
   {
     name: "Notifications",
