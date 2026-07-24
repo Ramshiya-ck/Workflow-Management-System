@@ -270,6 +270,19 @@ class AuthService:
                 logger.info(f"Password reset OTP for {user.email} is: {otp}")
                 print(f"\n[MOCK EMAIL SEND] Password reset OTP for {user.email} is: {otp}\n")
 
+                # Send actual email using Django's SMTP configurations
+                from django.core.mail import send_mail
+                from django.conf import settings
+                try:
+                    send_mail(
+                        subject="Password Reset Verification Code - AAK Workflow",
+                        message=f"Hello,\n\nYour password reset verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nSecure Access Gateway\nAAK Hypermarket",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send SMTP email to {user.email}: {e}")
         except User.DoesNotExist:
             pass
 
